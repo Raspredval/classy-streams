@@ -17,15 +17,17 @@ namespace io {
             }
 
             const auto&
-            put_endl(this const auto& self) {
-                return self.put_char('\n');
+            put_str(this const auto& self, std::string_view strv) {
+                self.stream().WriteSome({
+                    (const std::byte*)strv.data(),
+                    strv.size()
+                });
+                return self;
             }
 
             const auto&
-            put_str(this const auto& self, std::string_view strv) {
-                for (char c : strv)
-                    self.put_char(c);
-                return self;
+            put_endl(this const auto& self) {
+                return self.put_char('\n');
             }
 
             template<std::integral I>
