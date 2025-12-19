@@ -245,19 +245,30 @@ namespace io {
             size_t
             ReadSome(std::span<std::byte> buffer) {
                 this->ClearFlags();
+                size_t
+                    i = 0;
 
                 if (uRSize != 0) {
-                    // TODO: read from unget buffer;
+                    size_t
+                        uReadCount  = std::min<size_t>(this->uRSize, buffer.size());
+                    while (i != uReadCount) {
+                        buffer[i]       = this->lpRBuf[this->uRSize - 1];
+                        this->uRSize    -= 1;
+                        i               += 1;
+                    }
                 }
+
+                if (i == buffer.size())
+                    return i;
 
                 ssize_t
                     iReadSize   = recv(
                                     this->fdSocket,
-                                    buffer.data(), buffer.size(),
+                                    buffer.data() + i, buffer.size() - i,
                                     0);
                 if (iReadSize < 0) {
                     this->bErr  = true;
-                    return 0;
+                    return i;
                 }
 
                 size_t
@@ -267,7 +278,7 @@ namespace io {
                     this->bEOF  = true;
                 }
 
-                return (size_t)iReadSize;
+                return (size_t)iReadSize + i;
             }
 
             size_t
@@ -296,17 +307,25 @@ namespace io {
 
             std::optional<std::byte>
             Read() {
+                std::byte c;
+                if (this->ReadSome({&c, 1}) == 0)
+                    return std::nullopt;
 
+                return c;
             }
 
             bool
             Write(std::byte c) {
-
+                return this->WriteSome({&c, 1}) != 0;
             }
 
             bool
             PutBack(std::byte c) {
-
+                if (this->uRSize == sizeof(this->lpRBuf))
+                    return false;
+                this->lpRBuf[this->uRSize] = c;
+                this->uRSize += 1;
+                return true;
             }
 
         private:
