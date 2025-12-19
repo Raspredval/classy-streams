@@ -1,5 +1,5 @@
 #include <ConsoleStreams.hpp>
-#include "include/NetworkStreams.hpp"
+#include <NetworkStreams.hpp>
 
 int main() {
     try {
