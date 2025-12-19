@@ -150,30 +150,6 @@ namespace io {
 
                 return self;
             }
-
-            const auto&
-            forward_from(this const auto& self, std::string& from, size_t uCount = SIZE_MAX) {
-                std::byte
-                    lpBuffer[256];
-                auto&
-                    to      = self.stream();
-
-                size_t
-                    uStrPos = 0;
-                while (uCount > 0) {
-                    size_t
-                        uRdLen  = std::min(std::min(sizeof(lpBuffer), from.size() - uStrPos), uCount),
-                        uWrLen  = from.copy((char*)lpBuffer, uRdLen, uStrPos);
-                    to.WriteSome({lpBuffer, uWrLen});
-                    uCount      -= uWrLen;
-                    uStrPos     += uWrLen;
-
-                    if (uStrPos == from.size())
-                        break;
-                }
-
-                return self;
-            }
         };
 
         class SerialTextInput {
@@ -419,28 +395,6 @@ namespace io {
                         uRdLen  = std::min(sizeof(lpBuffer), uCount),
                         uWrLen  = from.ReadSome({lpBuffer, uRdLen});
                     to.WriteSome({lpBuffer, uWrLen});
-                    uCount      -= uWrLen;
-
-                    if (from.EndOfStream() || !from.Good())
-                        break;
-                }
-
-                return self;
-            }
-
-            const auto&
-            forward_to(this const auto& self, std::string& to, size_t uCount = SIZE_MAX) {
-                std::byte
-                    lpBuffer[256];
-                auto&
-                    from    = self.stream();
-                
-                while (uCount > 0) {
-                    size_t
-                        uRdLen  = std::min(sizeof(lpBuffer), uCount),
-                        uWrLen  = from.ReadSome({lpBuffer, uRdLen});
-                    to.append_range(
-                        std::span<const char>{(const char*)lpBuffer, uWrLen});
                     uCount      -= uWrLen;
 
                     if (from.EndOfStream() || !from.Good())
