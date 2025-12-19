@@ -278,7 +278,7 @@ namespace io {
                 bErr    : 1,
                 uRSize  : 6;
             std::byte
-                lpRBuf[alignof(int) - 1];
+                lpRBuf[std::max(alignof(int), 2uz) - 1];
         };
     }
 
