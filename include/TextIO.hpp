@@ -132,13 +132,20 @@ namespace io {
 
             const auto&
             forward_from(this const auto& self, io::SerialIStream& from, size_t uCount = SIZE_MAX) {
-                for (size_t i = 0; i != uCount; ++i) {
-                    std::optional<std::byte>
-                        optc    = from.Read();
-                    if (!optc)
-                        break;
+                std::byte
+                    lpBuffer[256];
+                auto&
+                    to      = self.stream();
 
-                    self.stream().Write(*optc);
+                while (uCount > 0) {
+                    size_t
+                        uRdLen  = std::min(sizeof(lpBuffer), uCount),
+                        uWrLen  = from.ReadSome({lpBuffer, uRdLen});
+                    to.WriteSome({lpBuffer, uWrLen});
+                    uCount      -= uWrLen;
+
+                    if (from.EndOfStream() || !from.Good())
+                        break;
                 }
 
                 return self;
@@ -146,8 +153,23 @@ namespace io {
 
             const auto&
             forward_from(this const auto& self, std::string& from, size_t uCount = SIZE_MAX) {
-                for (size_t i = 0; i != std::min(uCount, from.size()); ++i) {
-                    self.stream().Write((std::byte)from[i]);
+                std::byte
+                    lpBuffer[256];
+                auto&
+                    to      = self.stream();
+
+                size_t
+                    uStrPos = 0;
+                while (uCount > 0) {
+                    size_t
+                        uRdLen  = std::min(std::min(sizeof(lpBuffer), from.size() - uStrPos), uCount),
+                        uWrLen  = from.copy((char*)lpBuffer, uRdLen, uStrPos);
+                    to.WriteSome({lpBuffer, uWrLen});
+                    uCount      -= uWrLen;
+                    uStrPos     += uWrLen;
+
+                    if (uStrPos == from.size())
+                        break;
                 }
 
                 return self;
@@ -387,13 +409,20 @@ namespace io {
 
             const auto&
             forward_to(this const auto& self, io::SerialOStream& to, size_t uCount = SIZE_MAX) {
-                for (size_t i = 0; i != uCount; ++i) {
-                    std::optional<std::byte>
-                        optc    = self.stream().Read();
-                    if (!optc)
-                        break;
+                std::byte
+                    lpBuffer[256];
+                auto&
+                    from    = self.stream();
 
-                    to.Write(*optc);
+                while (uCount > 0) {
+                    size_t
+                        uRdLen  = std::min(sizeof(lpBuffer), uCount),
+                        uWrLen  = from.ReadSome({lpBuffer, uRdLen});
+                    to.WriteSome({lpBuffer, uWrLen});
+                    uCount      -= uWrLen;
+
+                    if (from.EndOfStream() || !from.Good())
+                        break;
                 }
 
                 return self;
@@ -401,13 +430,21 @@ namespace io {
 
             const auto&
             forward_to(this const auto& self, std::string& to, size_t uCount = SIZE_MAX) {
-                for (size_t i = 0; i != uCount; ++i) {
-                    std::optional<std::byte>
-                        optc    = self.stream().Read();
-                    if (!optc)
-                        break;
+                std::byte
+                    lpBuffer[256];
+                auto&
+                    from    = self.stream();
+                
+                while (uCount > 0) {
+                    size_t
+                        uRdLen  = std::min(sizeof(lpBuffer), uCount),
+                        uWrLen  = from.ReadSome({lpBuffer, uRdLen});
+                    to.append_range(
+                        std::span<const char>{(const char*)lpBuffer, uWrLen});
+                    uCount      -= uWrLen;
 
-                    to.push_back((char)*optc);
+                    if (from.EndOfStream() || !from.Good())
+                        break;
                 }
 
                 return self;
