@@ -421,6 +421,11 @@ namespace io {
 
                 freeaddrinfo(lpResult);
             }
+
+            std::string_view
+            ToString() {
+                return inet_ntoa(this->sin_addr);
+            }
         };
 
         using INetworkServer    =
