@@ -14,88 +14,6 @@
 
 
 namespace io {
-    struct AddressIPv4 :
-        public sockaddr_in
-    {
-        static constexpr sa_family_t
-            AddressFamily   = AF_INET;
-
-        AddressIPv4() = default;
-
-        AddressIPv4(in_addr_t uAddress, in_port_t uPort) :
-            sockaddr_in {
-                .sin_family = AF_INET,
-                .sin_port   = htons(uPort),
-                .sin_addr   = {uAddress},
-                .sin_zero   = {}
-            } {}
-
-        AddressIPv4(in_port_t uPort) :
-            AddressIPv4(INADDR_ANY, uPort) {}
-
-        AddressIPv4(std::string_view strvAddress, std::string_view strvService = {}) {
-            struct addrinfo
-                hints   = {
-                    .ai_family      = AF_INET,
-                    .ai_socktype    = SOCK_STREAM,
-                    .ai_flags       = AI_PASSIVE,
-                    .ai_protocol    = 0,
-                    .ai_addrlen     = 0,
-                    .ai_addr        = nullptr,
-                    .ai_canonname   = nullptr,
-                    .ai_next        = nullptr
-                },
-                *lpResult;
-
-            int
-                errcode = getaddrinfo(
-                            strvAddress.data(),
-                            strvService.data(),
-                            &hints,
-                            &lpResult);
-            switch (errcode) { // maybe expand later
-            case 0:
-                break;
-
-            default:
-                throw std::runtime_error("failed to get the IPv4 address from string");
-            }
-
-            if (lpResult->ai_family != AF_INET || lpResult->ai_addrlen != sizeof(struct sockaddr_in))
-                throw std::runtime_error("result address family isn't IPv4");
-
-            const struct sockaddr_in*
-                addr    = (const struct sockaddr_in*)lpResult->ai_addr;
-            this->sin_family    = AF_INET;
-            this->sin_addr      = addr->sin_addr;
-            this->sin_port      = addr->sin_port;
-
-            freeaddrinfo(lpResult);
-        }
-    };
-
-    struct AddressLocal :
-        public sockaddr_un
-    {
-        static constexpr sa_family_t
-            AddressFamily   = AF_LOCAL;
-        
-        AddressLocal() = default;
-
-        AddressLocal(std::string_view strvFilepath) :
-            sockaddr_un{ .sun_family = AF_LOCAL, .sun_path = {} }
-        {
-            size_t
-                uStrLen = std::min(
-                            strvFilepath.size(),
-                            sizeof(this->sun_path) - 1);
-            for (size_t i = 0; i != uStrLen; ++i) {
-                this->sun_path[i] = strvFilepath[i];
-            }
-            this->sun_path[uStrLen] = '\0';
-        }
-    };
-
     namespace __impl {
         template<typename AddressT, typename StreamT> requires
             std::derived_from<StreamT, io::__impl::StreamState>
@@ -443,4 +361,118 @@ namespace io {
             return this->NetworkStreamBase::WriteSome(buffer);
         }
     };
+
+    namespace IPv4 {
+        struct Address :
+        public sockaddr_in
+        {
+            static constexpr sa_family_t
+                AddressFamily   = AF_INET;
+
+            Address() = default;
+
+            Address(in_addr_t uAddress, in_port_t uPort) :
+                sockaddr_in {
+                    .sin_family = AF_INET,
+                    .sin_port   = htons(uPort),
+                    .sin_addr   = {uAddress},
+                    .sin_zero   = {}
+                } {}
+
+            Address(in_port_t uPort) :
+                Address(INADDR_ANY, uPort) {}
+
+            Address(std::string_view strvAddress, std::string_view strvService = {}) {
+                struct addrinfo
+                    hints   = {
+                        .ai_family      = AF_INET,
+                        .ai_socktype    = SOCK_STREAM,
+                        .ai_flags       = AI_PASSIVE,
+                        .ai_protocol    = 0,
+                        .ai_addrlen     = 0,
+                        .ai_addr        = nullptr,
+                        .ai_canonname   = nullptr,
+                        .ai_next        = nullptr
+                    },
+                    *lpResult;
+
+                int
+                    errcode = getaddrinfo(
+                                strvAddress.data(),
+                                strvService.data(),
+                                &hints,
+                                &lpResult);
+                switch (errcode) { // maybe expand later
+                case 0:
+                    break;
+
+                default:
+                    throw std::runtime_error("failed to get the IPv4 address from string");
+                }
+
+                if (lpResult->ai_family != AF_INET || lpResult->ai_addrlen != sizeof(struct sockaddr_in))
+                    throw std::runtime_error("result address family isn't IPv4");
+
+                const struct sockaddr_in*
+                    addr    = (const struct sockaddr_in*)lpResult->ai_addr;
+                this->sin_family    = AF_INET;
+                this->sin_addr      = addr->sin_addr;
+                this->sin_port      = addr->sin_port;
+
+                freeaddrinfo(lpResult);
+            }
+        };
+
+        using INetworkServer    =
+            __impl::BasicServer<IPv4::Address, INetworkStream>;
+        using ONetworkServer    =
+            __impl::BasicServer<IPv4::Address, ONetworkStream>;
+        using IONetworkServer   =
+            __impl::BasicServer<IPv4::Address, IONetworkStream>;
+
+        using INetworkClient    =
+            __impl::BasicClient<IPv4::Address, INetworkStream>;
+        using ONetworkClient    =
+            __impl::BasicClient<IPv4::Address, ONetworkStream>;
+        using IONetworkClient   =
+            __impl::BasicClient<IPv4::Address, IONetworkStream>;
+    }
+
+    namespace Local {
+        struct Address :
+            public sockaddr_un
+        {
+            static constexpr sa_family_t
+                AddressFamily   = AF_LOCAL;
+            
+            Address() = default;
+
+            Address(std::string_view strvFilepath) :
+                sockaddr_un{ .sun_family = AF_LOCAL, .sun_path = {} }
+            {
+                size_t
+                    uStrLen = std::min(
+                                strvFilepath.size(),
+                                sizeof(this->sun_path) - 1);
+                for (size_t i = 0; i != uStrLen; ++i) {
+                    this->sun_path[i] = strvFilepath[i];
+                }
+                this->sun_path[uStrLen] = '\0';
+            }
+        };
+
+        using INetworkServer    =
+            __impl::BasicServer<Local::Address, INetworkStream>;
+        using ONetworkServer    =
+            __impl::BasicServer<Local::Address, ONetworkStream>;
+        using IONetworkServer   =
+            __impl::BasicServer<Local::Address, IONetworkStream>;
+
+        using INetworkClient    =
+            __impl::BasicClient<Local::Address, INetworkStream>;
+        using ONetworkClient    =
+            __impl::BasicClient<Local::Address, ONetworkStream>;
+        using IONetworkClient   =
+            __impl::BasicClient<Local::Address, IONetworkStream>;
+    }
 }
