@@ -385,9 +385,9 @@ namespace io {
             Address(std::string_view strvAddress, std::string_view strvService = {}) {
                 struct addrinfo
                     hints   = {
+                        .ai_flags       = AI_PASSIVE,
                         .ai_family      = AF_INET,
                         .ai_socktype    = SOCK_STREAM,
-                        .ai_flags       = AI_PASSIVE,
                         .ai_protocol    = 0,
                         .ai_addrlen     = 0,
                         .ai_addr        = nullptr,
