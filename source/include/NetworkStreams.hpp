@@ -211,6 +211,23 @@ namespace io {
             virtual public  StreamState
         {
         public:
+            NetworkStreamBase(const NetworkStreamBase&) = delete;
+            NetworkStreamBase(NetworkStreamBase&& obj) noexcept {
+                this->fdSocket  = obj.fdSocket;
+                obj.fdSocket    = -1;
+            }
+
+            NetworkStreamBase&
+            operator=(const NetworkStreamBase&) = delete;
+            NetworkStreamBase&
+            operator=(NetworkStreamBase&& obj) noexcept {
+                NetworkStreamBase
+                    temp    = std::move(obj);
+                std::swap(
+                    this->fdSocket, temp.fdSocket);
+                return *this;
+            }
+
             NetworkStreamBase(int fdSocket) :
                 fdSocket(fdSocket),
                 bEOF(false),
@@ -239,6 +256,13 @@ namespace io {
             int
             Handle() const noexcept {
                 return this->fdSocket;
+            }
+
+            ~NetworkStreamBase() {
+                if (this->fdSocket >= 0) {
+                    shutdown(this->fdSocket, SHUT_RDWR);
+                    close(this->fdSocket);
+                }
             }
 
         protected:
@@ -339,4 +363,84 @@ namespace io {
                 lpRBuf[alignof(int) - 1];
         };
     }
+
+    class INetworkStream :
+        public  SerialIStream,
+        public  __impl::NetworkStreamBase {
+    public:
+        INetworkStream(int fdSocket) :
+            NetworkStreamBase(fdSocket)
+        {
+            shutdown(this->Handle(), SHUT_WR);
+        }
+        
+        std::optional<std::byte>
+        Read() override {
+            return this->NetworkStreamBase::Read();
+        }
+
+        size_t
+        ReadSome(std::span<std::byte> buffer) override {
+            return this->NetworkStreamBase::ReadSome(buffer);
+        }
+
+        bool
+        PutBack(std::byte c) override {
+            return this->NetworkStreamBase::PutBack(c);
+        }
+    };
+
+    class ONetworkStream :
+        public  SerialOStream,
+        public  __impl::NetworkStreamBase {
+    public:
+        ONetworkStream(int fdSocket) :
+            NetworkStreamBase(fdSocket)
+        {
+            shutdown(this->Handle(), SHUT_RD);
+        }
+
+        bool
+        Write(std::byte c) override {
+            return this->NetworkStreamBase::Write(c);
+        }
+
+        size_t
+        WriteSome(std::span<const std::byte> buffer) override {
+            return this->NetworkStreamBase::WriteSome(buffer);
+        }
+    };
+
+    class IONetworkStream :
+        public  SerialIOStream,
+        public  __impl::NetworkStreamBase {
+    public:
+        IONetworkStream(int fdSocket) :
+            NetworkStreamBase(fdSocket) {}
+
+        std::optional<std::byte>
+        Read() override {
+            return this->NetworkStreamBase::Read();
+        }
+
+        size_t
+        ReadSome(std::span<std::byte> buffer) override {
+            return this->NetworkStreamBase::ReadSome(buffer);
+        }
+
+        bool
+        PutBack(std::byte c) override {
+            return this->NetworkStreamBase::PutBack(c);
+        }
+
+        bool
+        Write(std::byte c) override {
+            return this->NetworkStreamBase::Write(c);
+        }
+
+        size_t
+        WriteSome(std::span<const std::byte> buffer) override {
+            return this->NetworkStreamBase::WriteSome(buffer);
+        }
+    };
 }
