@@ -108,7 +108,7 @@ namespace io {
                 int
                     fdAccept    = accept(this->fdServer, (struct sockaddr*)&addrAccept, &uSockAddrlen);
                 if (fdAccept < 0)
-                    return nullptr;
+                    return std::nullopt;
 
                 return std::pair<StreamT, AddressT>{ StreamT(fdAccept), addrAccept };
             }
