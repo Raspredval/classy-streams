@@ -3,9 +3,9 @@
 #include "TextIO.hpp"
 
 namespace io {
-    static IFileViewStream
+    static IFileStreamView
         std_input(stdin);
-    static OFileViewStream
+    static OFileStreamView
         std_output(stdout),
         std_error(stderr);
 

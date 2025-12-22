@@ -9,11 +9,11 @@
 
 namespace io {
     namespace __impl {
-        class FileViewStreamBase :
+        class FileStreamViewBase :
             virtual public  StreamState,
             virtual public  StreamPosition {
         public:
-            FileViewStreamBase(FILE* handle) :
+            FileStreamViewBase(FILE* handle) :
                 handle(handle) {}
 
             [[nodiscard]] bool
@@ -100,11 +100,11 @@ namespace io {
         };
 
         class FileStreamBase :
-            public FileViewStreamBase {
+            public FileStreamViewBase {
         public:
             FileStreamBase(const FileStreamBase&) = delete;
             FileStreamBase(FileStreamBase&& obj) noexcept :
-                FileViewStreamBase(obj.handle)
+                FileStreamViewBase(obj.handle)
             {
                 obj.handle      = nullptr;
             }
@@ -121,7 +121,7 @@ namespace io {
             }
 
             FileStreamBase(std::string_view strvFilename, std::string_view strvMode) :
-                FileViewStreamBase(fopen(strvFilename.data(), strvMode.data()))
+                FileStreamViewBase(fopen(strvFilename.data(), strvMode.data()))
             {
                 if (this->handle == nullptr) {
                     throw std::runtime_error(std::format(
@@ -137,77 +137,77 @@ namespace io {
         };
     }
 
-    class IFileViewStream :
+    class IFileStreamView :
         public  IStream,
-        public  __impl::FileViewStreamBase {
+        public  __impl::FileStreamViewBase {
     public:
-        IFileViewStream(FILE* handle) :
-            FileViewStreamBase(handle) {}
+        IFileStreamView(FILE* handle) :
+            FileStreamViewBase(handle) {}
         
         std::optional<std::byte>
         Read() override {
-            return this->FileViewStreamBase::Read();
+            return this->FileStreamViewBase::Read();
         }
 
         size_t
         ReadSome(std::span<std::byte> buffer) override {
-            return this->FileViewStreamBase::ReadSome(buffer);
+            return this->FileStreamViewBase::ReadSome(buffer);
         }
 
         bool
         PutBack(std::byte c) override {
-            return this->FileViewStreamBase::PutBack(c);
+            return this->FileStreamViewBase::PutBack(c);
         }
     };
 
-    class OFileViewStream :
+    class OFileStreamView :
         public  OStream,
-        public  __impl::FileViewStreamBase {
+        public  __impl::FileStreamViewBase {
     public:
-        OFileViewStream(FILE* handle) :
-            FileViewStreamBase(handle) {}
+        OFileStreamView(FILE* handle) :
+            FileStreamViewBase(handle) {}
         
         bool
         Write(std::byte c) override {
-            return this->FileViewStreamBase::Write(c);
+            return this->FileStreamViewBase::Write(c);
         }
 
         size_t
         WriteSome(std::span<const std::byte> buffer) override {
-            return this->FileViewStreamBase::WriteSome(buffer);
+            return this->FileStreamViewBase::WriteSome(buffer);
         }
     };
 
-    class IOFileViewStream :
+    class IOFileStreamView :
         public  IOStream,
-        public  __impl::FileViewStreamBase {
+        public  __impl::FileStreamViewBase {
     public:
-        IOFileViewStream(FILE* handle) :
-            FileViewStreamBase(handle) {}
+        IOFileStreamView(FILE* handle) :
+            FileStreamViewBase(handle) {}
 
         std::optional<std::byte>
         Read() override {
-            return this->FileViewStreamBase::Read();
+            return this->FileStreamViewBase::Read();
         }
 
         size_t
         ReadSome(std::span<std::byte> buffer) override {
-            return this->FileViewStreamBase::ReadSome(buffer);
+            return this->FileStreamViewBase::ReadSome(buffer);
         }
 
         bool
         PutBack(std::byte c) override {
-            return this->FileViewStreamBase::PutBack(c);
+            return this->FileStreamViewBase::PutBack(c);
         }
 
         bool
         Write(std::byte c) override {
-            return this->FileViewStreamBase::Write(c);
+            return this->FileStreamViewBase::Write(c);
         }
 
         size_t
         WriteSome(std::span<const std::byte> buffer) override {
-            return this->FileViewStreamBase::WriteSome(buffer);
+            return this->FileStreamViewBase::WriteSome(buffer);
         }
     };
 
