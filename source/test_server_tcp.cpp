@@ -20,7 +20,7 @@ int main() {
             std::string
                 strMessage;
             io::SerialTextInput(istream)
-                .get_all(strMessage);
+                .get_line(strMessage);
             io::cout.fmt("accepted message: \"{}\"\n", strMessage);
             if (strMessage == "/exit")
                 return EXIT_SUCCESS;
