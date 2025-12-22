@@ -19,6 +19,13 @@ namespace io {
             std::derived_from<StreamT, io::__impl::StreamState>
         class BasicClient {
         public:
+            using AddressType       =
+                AddressT;
+            using StreamType        =
+                StreamT;
+            using ConnectionType    =
+                std::optional<StreamType>;
+
             BasicClient() :
                 fdClient(socket(AddressT::AddressFamily, SOCK_STREAM, 0))
             {
@@ -43,7 +50,7 @@ namespace io {
                 return *this;
             }
 
-            std::optional<StreamT>
+            ConnectionType
             Connect(const AddressT& addr) {
                 if (connect(this->fdClient, (const struct sockaddr*)&addr, sizeof(AddressT)) != 0)
                     return std::nullopt;
@@ -67,6 +74,13 @@ namespace io {
             std::derived_from<StreamT, io::__impl::StreamState>
         class BasicServer {
         public:
+            using AddressType       =
+                AddressT;
+            using StreamType        =
+                StreamT;
+            using ConnectionType    =
+                std::optional<std::pair<StreamT, AddressT>>;
+
             BasicServer(const AddressT& addr, int iPendingConnections = 32) :
                 fdServer(socket(AddressT::AddressFamily, SOCK_STREAM, 0))
             {
@@ -99,7 +113,7 @@ namespace io {
                 return *this;
             }
 
-            std::optional<std::pair<StreamT, AddressT>>
+            ConnectionType
             Accept() {
                 AddressT
                     addrAccept;
