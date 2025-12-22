@@ -141,16 +141,11 @@ namespace io {
         
         class BufferedNetworkStream {
         public:
-            
-
-        private:
-            std::byte
-                *lpInputBuffer  = nullptr,
-                *lpOutputBuffer = nullptr;
-            int
-                fdSocket;
-            
+            // TODO the rest of the buffered stream, lmao
         };
+
+        // TODO: NetworkStreamViewBase
+        // TODO: NetworkStreamBase
     }
 
     class INonOwningNetworkStream :
