@@ -3,20 +3,22 @@
 
 int main() {
     try {
-        io::IPv4::ONetworkClient
-            ip_client;
+        io::Local::ONetworkClient
+            local_client;
         
         auto
-            optConnection   = ip_client.Connect({"127.0.0.1", "1337"});
+            optConnection   = local_client.Connect({"./local_socket"});
         if (!optConnection)
             throw std::runtime_error("failed to connect to a server");
 
-        while (optConnection->Good()) {
+        auto&
+            ostream = *optConnection;
+        while (ostream) {
             std::string
                 strMessage;
             io::cout.put("enter message: ");
             io::cin.get_line(strMessage);
-            io::SerialTextOutput(*optConnection)
+            io::SerialTextOutput(ostream)
                 .put(strMessage);
             if (strMessage == "/exit")
                 return EXIT_SUCCESS;

@@ -30,15 +30,58 @@ cpack_add_component(classy-streams-headers
 
 include(CTest)
 
-add_executable(classy-tests
-    "source/tests.cpp")
-target_compile_options(classy-tests
+set(CXX_WARNINGS "-Wall" "-Wextra" "-Wconversion" "-Werror")
+
+add_executable(test_client_local
+    "source/test_client_local.cpp")
+target_compile_options(test_client_local
     PRIVATE
-        "-Wall" "-Wextra" "-Wconversion" "-Werror")
-target_include_directories(classy-tests
+        ${CXX_WARNINGS})
+target_include_directories(test_client_local
+    PRIVATE
+        "include/")
+
+add_executable(test_server_local
+    "source/test_server_local.cpp")
+target_compile_options(test_server_local
+    PRIVATE
+        ${CXX_WARNINGS})
+target_include_directories(test_server_local
     PRIVATE
         "include/")
 
 add_test(
-    NAME    classy-tests
-    COMMAND classy-tests)
+    NAME    test_server_local
+    COMMAND test_server_local)
+
+add_test(
+    NAME    test_client_local
+    COMMAND test_client_local
+    DEPENDS test_server_local)
+
+add_executable(test_client_tcp
+    "source/test_client_tcp.cpp")
+target_compile_options(test_client_tcp
+    PRIVATE
+        ${CXX_WARNINGS})
+target_include_directories(test_client_tcp
+    PRIVATE
+        "include/")
+
+add_executable(test_server_tcp
+    "source/test_server_tcp.cpp")
+target_compile_options(test_server_tcp
+    PRIVATE
+        ${CXX_WARNINGS})
+target_include_directories(test_server_tcp
+    PRIVATE
+        "include/")
+
+add_test(
+    NAME    test_server_tcp
+    COMMAND test_server_tcp)
+
+add_test(
+    NAME    test_client_tcp
+    COMMAND test_client_tcp
+    DEPENDS test_server_tcp)
