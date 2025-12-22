@@ -132,20 +132,16 @@ namespace io {
 
             const auto&
             forward_from(this const auto& self, io::SerialIStream& from, size_t uCount = SIZE_MAX) {
-                std::byte
-                    lpBuffer[256];
                 auto&
                     to      = self.stream();
 
                 while (uCount > 0) {
-                    size_t
-                        uRdLen  = std::min(sizeof(lpBuffer), uCount),
-                        uWrLen  = from.ReadSome({lpBuffer, uRdLen});
-                    to.WriteSome({lpBuffer, uWrLen});
-                    uCount      -= uWrLen;
-
-                    if (from.EndOfStream() || !from.Good())
+                    auto
+                        optc    = from.Read();
+                    if (!optc)
                         break;
+                    to.Write(*optc);
+                    uCount      -= 1;
                 }
 
                 return self;
@@ -385,20 +381,16 @@ namespace io {
 
             const auto&
             forward_to(this const auto& self, io::SerialOStream& to, size_t uCount = SIZE_MAX) {
-                std::byte
-                    lpBuffer[256];
                 auto&
                     from    = self.stream();
 
                 while (uCount > 0) {
-                    size_t
-                        uRdLen  = std::min(sizeof(lpBuffer), uCount),
-                        uWrLen  = from.ReadSome({lpBuffer, uRdLen});
-                    to.WriteSome({lpBuffer, uWrLen});
-                    uCount      -= uWrLen;
-
-                    if (from.EndOfStream() || !from.Good())
+                    auto
+                        optc    = from.Read();
+                    if (!optc)
                         break;
+                    to.Write(*optc);
+                    uCount      -= 1;
                 }
 
                 return self;
