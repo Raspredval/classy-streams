@@ -55,7 +55,7 @@ namespace io {
                 if (connect(this->fdClient, (const struct sockaddr*)&addr, sizeof(AddressT)) != 0)
                     return std::nullopt;
 
-                return StreamT(dup(this->fdClient));
+                return StreamT(this->fdClient);
             }
 
             ~BasicClient() {
@@ -139,240 +139,177 @@ namespace io {
                 fdServer = -1;
         };
         
-        class NetworkStreamBase :
-            virtual public  StreamState
-        {
+        class BufferedNetworkStream {
         public:
-            NetworkStreamBase(const NetworkStreamBase&) = delete;
-            NetworkStreamBase(NetworkStreamBase&& obj) noexcept {
-                this->fdSocket  = obj.fdSocket;
-                obj.fdSocket    = -1;
-            }
-
-            NetworkStreamBase&
-            operator=(const NetworkStreamBase&) = delete;
-            NetworkStreamBase&
-            operator=(NetworkStreamBase&& obj) noexcept {
-                NetworkStreamBase
-                    temp    = std::move(obj);
-                std::swap(
-                    this->fdSocket, temp.fdSocket);
-                return *this;
-            }
-
-            NetworkStreamBase(int fdSocket) :
-                fdSocket(fdSocket),
-                bEOF(false),
-                bErr(false)
-            {
-                if (fdSocket < 0)
-                    throw std::runtime_error("invalid socket handle");
-            }
-
-            [[nodiscard]] bool
-            EndOfStream() const noexcept override {
-                return (bool)this->bEOF;
-            }
-
-            [[nodiscard]] bool
-            Good() const noexcept override {
-                return !(bool)this->bErr;
-            }
-
-            void
-            ClearFlags() noexcept override {
-                this->bEOF  = 0;
-                this->bErr  = 0;
-            }
-
-            int
-            Handle() const noexcept {
-                return this->fdSocket;
-            }
-
-            ~NetworkStreamBase() {
-                if (this->fdSocket >= 0) {
-                    shutdown(this->fdSocket, SHUT_RDWR);
-                    close(this->fdSocket);
-                }
-            }
-
-        protected:
-            size_t
-            ReadSome(std::span<std::byte> buffer) {
-                this->ClearFlags();
-                size_t
-                    i = 0;
-
-                if (uRSize != 0) {
-                    size_t
-                        uReadCount  = std::min<size_t>(this->uRSize, buffer.size());
-                    while (i != uReadCount) {
-                        buffer[i]       = this->lpRBuf[this->uRSize - 1];
-                        this->uRSize    -= 1;
-                        i               += 1;
-                    }
-                }
-
-                if (i == buffer.size())
-                    return i;
-
-                ssize_t
-                    iReadSize   = recv(
-                                    this->fdSocket,
-                                    buffer.data() + i, buffer.size() - i,
-                                    0);
-                if (iReadSize < 0) {
-                    this->bErr  = true;
-                    return i;
-                }
-
-                size_t
-                    uReadSize   = (size_t)iReadSize;
-
-                if (uReadSize < buffer.size()) {
-                    this->bEOF  = true;
-                }
-
-                return (size_t)iReadSize + i;
-            }
-
-            size_t
-            WriteSome(std::span<const std::byte> buffer) {
-                this->ClearFlags();
-                this->uRSize    = 0;
-                
-                ssize_t
-                    iWriteSize  = send(
-                                    this->fdSocket,
-                                    buffer.data(), buffer.size(),
-                                    0);
-                if (iWriteSize < 0) {
-                    this->bErr  = true;
-                    return 0;
-                }
-
-                size_t
-                    uWriteSize  = (size_t)iWriteSize;
-                if (uWriteSize < buffer.size()) {
-                    this->bEOF  = true;
-                }
-
-                return uWriteSize;
-            }
-
-            std::optional<std::byte>
-            Read() {
-                std::byte c;
-                if (this->ReadSome({&c, 1}) == 0)
-                    return std::nullopt;
-
-                return c;
-            }
-
-            bool
-            Write(std::byte c) {
-                return this->WriteSome({&c, 1}) != 0;
-            }
-
-            bool
-            PutBack(std::byte c) {
-                if (this->uRSize == sizeof(this->lpRBuf))
-                    return false;
-                this->lpRBuf[this->uRSize] = c;
-                this->uRSize += 1;
-                return true;
-            }
+            
 
         private:
-            int
-                fdSocket = -1;
-            uint8_t
-                bEOF    : 1,
-                bErr    : 1,
-                uRSize  : 6;
             std::byte
-                lpRBuf[std::max(alignof(int), 2uz) - 1];
+                *lpInputBuffer  = nullptr,
+                *lpOutputBuffer = nullptr;
+            int
+                fdSocket;
+            
         };
     }
 
-    class INetworkStream :
+    class INonOwningNetworkStream :
         public  SerialIStream,
-        public  __impl::NetworkStreamBase {
+        public  __impl::NonOwningNetworkStreamBase {
     public:
-        INetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket)
+        INonOwningNetworkStream(int fdSocket) :
+            NonOwningNetworkStreamBase(fdSocket)
         {
             shutdown(this->Handle(), SHUT_WR);
         }
         
         std::optional<std::byte>
         Read() override {
-            return this->NetworkStreamBase::Read();
+            return this->NonOwningNetworkStreamBase::Read();
         }
 
         size_t
         ReadSome(std::span<std::byte> buffer) override {
-            return this->NetworkStreamBase::ReadSome(buffer);
+            return this->NonOwningNetworkStreamBase::ReadSome(buffer);
         }
 
         bool
         PutBack(std::byte c) override {
-            return this->NetworkStreamBase::PutBack(c);
+            return this->NonOwningNetworkStreamBase::PutBack(c);
         }
     };
 
-    class ONetworkStream :
+    class ONonOwningNetworkStream :
         public  SerialOStream,
-        public  __impl::NetworkStreamBase {
+        public  __impl::NonOwningNetworkStreamBase {
     public:
-        ONetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket)
+        ONonOwningNetworkStream(int fdSocket) :
+            NonOwningNetworkStreamBase(fdSocket)
         {
             shutdown(this->Handle(), SHUT_RD);
         }
 
         bool
         Write(std::byte c) override {
-            return this->NetworkStreamBase::Write(c);
+            return this->NonOwningNetworkStreamBase::Write(c);
         }
 
         size_t
         WriteSome(std::span<const std::byte> buffer) override {
-            return this->NetworkStreamBase::WriteSome(buffer);
+            return this->NonOwningNetworkStreamBase::WriteSome(buffer);
         }
     };
 
-    class IONetworkStream :
+    class IONonOwningNetworkStream :
         public  SerialIOStream,
-        public  __impl::NetworkStreamBase {
+        public  __impl::NonOwningNetworkStreamBase {
     public:
-        IONetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket) {}
+        IONonOwningNetworkStream(int fdSocket) :
+            NonOwningNetworkStreamBase(fdSocket) {}
 
         std::optional<std::byte>
         Read() override {
-            return this->NetworkStreamBase::Read();
+            return this->NonOwningNetworkStreamBase::Read();
         }
 
         size_t
         ReadSome(std::span<std::byte> buffer) override {
-            return this->NetworkStreamBase::ReadSome(buffer);
+            return this->NonOwningNetworkStreamBase::ReadSome(buffer);
         }
 
         bool
         PutBack(std::byte c) override {
-            return this->NetworkStreamBase::PutBack(c);
+            return this->NonOwningNetworkStreamBase::PutBack(c);
         }
 
         bool
         Write(std::byte c) override {
-            return this->NetworkStreamBase::Write(c);
+            return this->NonOwningNetworkStreamBase::Write(c);
         }
 
         size_t
         WriteSome(std::span<const std::byte> buffer) override {
-            return this->NetworkStreamBase::WriteSome(buffer);
+            return this->NonOwningNetworkStreamBase::WriteSome(buffer);
+        }
+    };
+
+    class IOwningNetworkStream :
+        public  SerialIStream,
+        public  __impl::OwningNetworkStreamBase {
+    public:
+        IOwningNetworkStream(int fdSocket) :
+            OwningNetworkStreamBase(fdSocket)
+        {
+            shutdown(this->Handle(), SHUT_WR);
+        }
+        
+        std::optional<std::byte>
+        Read() override {
+            return this->OwningNetworkStreamBase::Read();
+        }
+
+        size_t
+        ReadSome(std::span<std::byte> buffer) override {
+            return this->OwningNetworkStreamBase::ReadSome(buffer);
+        }
+
+        bool
+        PutBack(std::byte c) override {
+            return this->OwningNetworkStreamBase::PutBack(c);
+        }
+    };
+
+    class OOwningNetworkStream :
+        public  SerialOStream,
+        public  __impl::OwningNetworkStreamBase {
+    public:
+        OOwningNetworkStream(int fdSocket) :
+            OwningNetworkStreamBase(fdSocket)
+        {
+            shutdown(this->Handle(), SHUT_RD);
+        }
+
+        bool
+        Write(std::byte c) override {
+            return this->OwningNetworkStreamBase::Write(c);
+        }
+
+        size_t
+        WriteSome(std::span<const std::byte> buffer) override {
+            return this->OwningNetworkStreamBase::WriteSome(buffer);
+        }
+    };
+
+    class IOOwningNetworkStream :
+        public  SerialIOStream,
+        public  __impl::OwningNetworkStreamBase {
+    public:
+        IOOwningNetworkStream(int fdSocket) :
+            OwningNetworkStreamBase(fdSocket) {}
+
+        std::optional<std::byte>
+        Read() override {
+            return this->OwningNetworkStreamBase::Read();
+        }
+
+        size_t
+        ReadSome(std::span<std::byte> buffer) override {
+            return this->OwningNetworkStreamBase::ReadSome(buffer);
+        }
+
+        bool
+        PutBack(std::byte c) override {
+            return this->OwningNetworkStreamBase::PutBack(c);
+        }
+
+        bool
+        Write(std::byte c) override {
+            return this->OwningNetworkStreamBase::Write(c);
+        }
+
+        size_t
+        WriteSome(std::span<const std::byte> buffer) override {
+            return this->OwningNetworkStreamBase::WriteSome(buffer);
         }
     };
 
@@ -443,18 +380,18 @@ namespace io {
         };
 
         using INetworkServer    =
-            __impl::BasicServer<IPv4::Address, INetworkStream>;
+            __impl::BasicServer<IPv4::Address, IOwningNetworkStream>;
         using ONetworkServer    =
-            __impl::BasicServer<IPv4::Address, ONetworkStream>;
+            __impl::BasicServer<IPv4::Address, OOwningNetworkStream>;
         using IONetworkServer   =
-            __impl::BasicServer<IPv4::Address, IONetworkStream>;
+            __impl::BasicServer<IPv4::Address, IOOwningNetworkStream>;
 
         using INetworkClient    =
-            __impl::BasicClient<IPv4::Address, INetworkStream>;
+            __impl::BasicClient<IPv4::Address, INonOwningNetworkStream>;
         using ONetworkClient    =
-            __impl::BasicClient<IPv4::Address, ONetworkStream>;
+            __impl::BasicClient<IPv4::Address, ONonOwningNetworkStream>;
         using IONetworkClient   =
-            __impl::BasicClient<IPv4::Address, IONetworkStream>;
+            __impl::BasicClient<IPv4::Address, IONonOwningNetworkStream>;
     }
 
     namespace Local {
@@ -481,17 +418,17 @@ namespace io {
         };
 
         using INetworkServer    =
-            __impl::BasicServer<Local::Address, INetworkStream>;
+            __impl::BasicServer<Local::Address, IOwningNetworkStream>;
         using ONetworkServer    =
-            __impl::BasicServer<Local::Address, ONetworkStream>;
+            __impl::BasicServer<Local::Address, OOwningNetworkStream>;
         using IONetworkServer   =
-            __impl::BasicServer<Local::Address, IONetworkStream>;
+            __impl::BasicServer<Local::Address, IOOwningNetworkStream>;
 
         using INetworkClient    =
-            __impl::BasicClient<Local::Address, INetworkStream>;
+            __impl::BasicClient<Local::Address, INonOwningNetworkStream>;
         using ONetworkClient    =
-            __impl::BasicClient<Local::Address, ONetworkStream>;
+            __impl::BasicClient<Local::Address, ONonOwningNetworkStream>;
         using IONetworkClient   =
-            __impl::BasicClient<Local::Address, IONetworkStream>;
+            __impl::BasicClient<Local::Address, IONonOwningNetworkStream>;
     }
 }
