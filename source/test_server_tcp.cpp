@@ -22,7 +22,7 @@ int main() {
             io::SerialTextInput(istream)
                 .get_line(strMessage);
             io::cout.fmt("accepted message: \"{}\"\n", strMessage);
-            if (strMessage == "/exit")
+            if (strMessage.empty() || strMessage == "/exit")
                 return EXIT_SUCCESS;
         }
 
