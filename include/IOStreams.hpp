@@ -26,6 +26,9 @@ namespace io {
             virtual void
             ClearFlags() noexcept = 0;
             
+            virtual void
+            Flush() noexcept = 0;
+
             inline operator bool() const noexcept {
                 return this->Good();
             }

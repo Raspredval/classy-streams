@@ -461,7 +461,28 @@ namespace io {
             }
         };
         
-        class RandomAccessTextIO {
+        class SerialAccessTextIO {
+        public:
+            const auto&
+            good(this const auto& self, bool& out) {
+                out = self.stream().Good();
+                return self;
+            }
+
+            const auto&
+            ended(this const auto& self, bool& out) {
+                out = self.stream().EndOfStream();
+                return self;
+            }
+
+            const auto&
+            flush(this const auto& self) {
+                self.stream().Flush();
+            }
+        };
+
+        class RandomAccessTextIO :
+            public SerialAccessTextIO {
         public:
             const auto&
             go(this const auto& self, intptr_t offset, StreamOffsetOrigin origin = StreamOffsetOrigin::CurrentPos) {
@@ -482,6 +503,7 @@ namespace io {
     }
 
     class SerialTextInput :
+        public __impl::SerialAccessTextIO,
         public __impl::SerialTextInput {
     public:
         SerialTextInput(const SerialTextInput&) = delete;
@@ -500,6 +522,7 @@ namespace io {
     };
 
     class SerialTextOutput :
+        public __impl::SerialAccessTextIO,
         public __impl::SerialTextOutput {
     public:
         SerialTextOutput(const SerialTextOutput&) = delete;
@@ -518,6 +541,7 @@ namespace io {
     };
 
     class SerialTextIO :
+        public __impl::SerialAccessTextIO,
         public __impl::SerialTextInput,
         public __impl::SerialTextOutput {
     public:

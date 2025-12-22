@@ -35,6 +35,9 @@ namespace io {
             this->flags_eof = false;
         }
 
+        void
+        Flush() noexcept override {}
+
         bool
         SetPosition(intptr_t offset, StreamOffsetOrigin from = StreamOffsetOrigin::StreamStart) override {
             switch(from) {
