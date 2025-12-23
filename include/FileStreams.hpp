@@ -52,9 +52,9 @@ namespace io {
                 return this->handle;
             }
 
-            void
+            bool
             Flush() noexcept override {
-                return (void)fflush(this->handle);
+                return fflush(this->handle) == 0;
             }
 
         protected:
