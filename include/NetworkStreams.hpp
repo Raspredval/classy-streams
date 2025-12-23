@@ -15,6 +15,164 @@
 
 namespace io {
     namespace __impl {
+        class BufferedNetworkStream {
+        public:
+            BufferedNetworkStream(int fdSocket) {
+                if (fdSocket < 0)
+                    throw std::runtime_error("failed to create a socket");
+
+                this->s.fdSocket    = fdSocket;
+            }
+
+            std::optional<std::byte>
+            Read() noexcept {
+                if (this->s.uRetLen != 0)
+                    return this->s.lpRetBuf[--this->s.uRetLen];
+                
+                if (this->i.uBegin == this->i.uEnd) {
+                    if (!this->GetInput() || this->i.uBegin == this->i.uEnd)
+                        return std::nullopt;
+                }
+
+                return this->i.lpData[this->i.uBegin++];
+            }
+
+            bool
+            Write(std::byte c) noexcept {
+                if (this->o.uSize == sizeof(o.lpData)) {
+                    if (!this->Flush())
+                        return false;
+                }
+
+                this->o.lpData[this->o.uSize++] = c;
+                return true;
+            }
+
+            size_t
+            ReadSome(std::span<std::byte> buffer) noexcept {
+                for (size_t i = 0; i != buffer.size(); ++i) {
+                    std::optional<std::byte>
+                        optc    = this->Read();
+                    if (!optc)
+                        return i;
+                }
+
+                return buffer.size();
+            }
+
+            size_t
+            WriteSome(std::span<const std::byte> buffer) noexcept {
+                for (size_t i = 0; i != buffer.size(); ++i) {
+                    if (!this->Write(buffer[i]))
+                        return i;
+                }
+
+                return buffer.size();
+            }
+
+            bool
+            PutBack(std::byte c) noexcept {
+                if (this->s.uRetLen == sizeof(this->s.lpRetBuf))
+                    return false;
+
+                this->s.lpRetBuf[this->s.uRetLen++] = c;
+                return true;
+            }
+
+            bool
+            Flush() noexcept {
+                if (this->o.uSize == 0)
+                    return false;
+
+                ssize_t
+                    iOutputSize = send(
+                                    this->s.fdSocket,
+                                    this->o.lpData,
+                                    this->o.uSize,
+                                    0);
+                if (iOutputSize < 0) {
+                    this->s.bErr = true;
+                    return false;
+                }
+
+                this->o.uSize   = 0;
+                return true;
+            }
+
+            void
+            ClearFlags() noexcept {
+                this->s.bEOF    = false;
+                this->s.bErr    = false;
+            }
+
+            bool
+            EndOfStream() const noexcept {
+                return (bool)this->s.bEOF;
+            }
+
+            bool
+            Error() const noexcept {
+                return (bool)this->s.bEOF;
+            }
+
+            int
+            Descriptor() const noexcept {
+                return this->s.fdSocket;
+            }
+
+        private:
+            bool
+            GetInput() {
+                if (this->i.uBegin != this->i.uEnd)
+                    return false;
+
+                ssize_t
+                    iInputSize  = recv(
+                                    this->s.fdSocket,
+                                    this->i.lpData,
+                                    sizeof(this->i.lpData),
+                                    0);
+                if (iInputSize < 0) {
+                    this->s.bErr = true;
+                    return false;
+                }
+
+                this->i.uBegin  = 0;
+                this->i.uEnd    = (size_t)iInputSize;
+
+                if (this->i.uEnd != sizeof(this->i.lpData))
+                    this->s.bEOF = true;
+
+                return true;
+            }
+
+            struct InputBuffer {
+                std::byte
+                    lpData[sizeof(size_t) * 32];
+                size_t
+                    uBegin      = 0,
+                    uEnd        = 0;
+            } i;
+
+            struct OutputBuffer {
+                std::byte
+                    lpData[sizeof(size_t) * 32];
+                size_t
+                    uSize       = 0;
+            } o;
+            
+            struct State {
+                int
+                    fdSocket    = -1;
+                uint8_t
+                    bEOF    : 1 = false,
+                    bErr    : 1 = false,
+                    uRetLen : 6 = 0;
+                std::byte
+                    lpRetBuf[std::max(sizeof(int), 2uz) - 1];
+            } s;
+        };
+
         template<typename AddressT, typename StreamT> requires
             std::derived_from<StreamT, io::__impl::StreamState>
         class BasicClient {
@@ -137,11 +295,6 @@ namespace io {
         private:
             int
                 fdServer = -1;
-        };
-        
-        class BufferedNetworkStream {
-        public:
-            // TODO the rest of the buffered stream, lmao
         };
 
         // TODO: NetworkStreamViewBase
