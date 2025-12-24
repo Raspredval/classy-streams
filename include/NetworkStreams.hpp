@@ -41,7 +41,7 @@ namespace io {
             ~BufferedNetworkStream() noexcept {
                 shutdown(this->s.fdSocket, SHUT_RD);
                 this->Flush();
-                shutdown(this->s.fdSocket, SHUT_WR);
+                shutdown(this->s.fdSocket, SHUT_RDWR);
                 close(this->s.fdSocket);
             }
 
@@ -272,19 +272,24 @@ namespace io {
             using StreamViewType    =
                 StreamViewT;
             using ConnectionType    =
-                std::optional<StreamViewType>;
+                std::optional<StreamViewT>;
 
             BasicClient() :
-                stream(socket(AddressType::AddressFamily, SOCK_STREAM, 0)) {}
+                stream(socket(AddressT::AddressFamily, SOCK_STREAM, 0)) {}
 
             ConnectionType
             Connect(const AddressT& addr) {
+                ConnectionType
+                    connection = std::nullopt;
+                
                 int
                     fdClient    = this->stream.Handle()->Descriptor();
-                if (connect(fdClient, (const struct sockaddr*)&addr, sizeof(AddressT)) != 0)
-                    return std::nullopt;
+                if (connect(fdClient, (const struct sockaddr*)&addr, sizeof(AddressT)) == 0) {
+                    connection.emplace(
+                        StreamViewT(this->stream.Handle()));
+                }
 
-                return StreamViewT(this->stream.Handle());
+                return connection;
             }
 
         private:
@@ -337,16 +342,22 @@ namespace io {
 
             ConnectionType
             Accept() {
+                ConnectionType
+                    connection  = std::nullopt;
+
                 AddressT
                     addrAccept;
                 socklen_t
                     uSockAddrlen;
                 int
                     fdAccept    = accept(this->fdServer, (struct sockaddr*)&addrAccept, &uSockAddrlen);
-                if (fdAccept < 0)
-                    return std::nullopt;
-
-                return std::pair<StreamT, AddressT>{ StreamT(fdAccept), addrAccept };
+                if (fdAccept >= 0) {
+                    connection.emplace(
+                        StreamT(fdAccept),
+                        addrAccept);
+                }
+                
+                return connection;
             }
 
             ~BasicServer() {
@@ -367,10 +378,9 @@ namespace io {
         public __impl::NetworkStreamViewBase {
     public:
         INetworkStreamView(__impl::BufferedNetworkStream* hStream) :
-            NetworkStreamViewBase(hStream)
-        {
-            shutdown(this->hStream->Descriptor(), SHUT_WR);
-        }
+            NetworkStreamViewBase(hStream) {
+                shutdown(this->hStream->Descriptor(), SHUT_WR);
+            }
 
         std::optional<std::byte>
         Read() override {
@@ -393,10 +403,9 @@ namespace io {
         public __impl::NetworkStreamViewBase {
     public:
         ONetworkStreamView(__impl::BufferedNetworkStream* hStream) :
-            NetworkStreamViewBase(hStream)
-        {
-            shutdown(this->hStream->Descriptor(), SHUT_RD);
-        }
+            NetworkStreamViewBase(hStream) {
+                shutdown(this->hStream->Descriptor(), SHUT_RD);
+            }
 
         bool
         Write(std::byte c) override {
@@ -447,10 +456,9 @@ namespace io {
         public __impl::NetworkStreamBase {
     public:
         INetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket)
-        {
-            shutdown(this->hStream->Descriptor(), SHUT_WR);
-        }
+            NetworkStreamBase(fdSocket) {
+                shutdown(this->hStream->Descriptor(), SHUT_WR);
+            }
 
         std::optional<std::byte>
         Read() override {
@@ -473,10 +481,9 @@ namespace io {
         public __impl::NetworkStreamBase {
     public:
         ONetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket)
-        {
-            shutdown(this->hStream->Descriptor(), SHUT_RD);
-        }
+            NetworkStreamBase(fdSocket) {
+                shutdown(this->hStream->Descriptor(), SHUT_RD);
+            }
 
         bool
         Write(std::byte c) override {
