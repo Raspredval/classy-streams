@@ -5,18 +5,18 @@
 namespace io {
     namespace __impl {
         static IFileStreamView
-            std_input(stdin);
+            __std_input(stdin);
         static OFileStreamView
-            std_output(stdout),
-            std_error(stderr);
+            __std_output(stdout),
+            __std_error(stderr);
     }
 
     static SerialIStream&
-        std_input   = __impl::std_input;
+        std_input   = __impl::__std_input;
     static SerialOStream&
-        std_output  = __impl::std_output;
+        std_output  = __impl::__std_output;
     static SerialOStream&
-        std_error   = __impl::std_error;
+        std_error   = __impl::__std_error;
 
     static SerialTextInput
         cin(std_input);
