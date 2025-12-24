@@ -17,11 +17,32 @@ namespace io {
     namespace __impl {
         class BufferedNetworkStream {
         public:
+            BufferedNetworkStream() = delete;
+
+            BufferedNetworkStream(
+                const BufferedNetworkStream&) = delete;
+            
+            BufferedNetworkStream(
+                BufferedNetworkStream&&) noexcept = delete;
+            
+            BufferedNetworkStream&
+            operator=(const BufferedNetworkStream&) = delete;
+            
+            BufferedNetworkStream&
+            operator=(BufferedNetworkStream&&) noexcept = delete;
+
             BufferedNetworkStream(int fdSocket) {
                 if (fdSocket < 0)
                     throw std::runtime_error("failed to create a socket");
 
                 this->s.fdSocket    = fdSocket;
+            }
+
+            ~BufferedNetworkStream() {
+                shutdown(this->s.fdSocket, SHUT_RD);
+                this->Flush();
+                shutdown(this->s.fdSocket, SHUT_WR);
+                close(this->s.fdSocket);
             }
 
             std::optional<std::byte>
