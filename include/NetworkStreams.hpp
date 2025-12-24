@@ -107,7 +107,7 @@ namespace io {
             bool
             Flush() noexcept {
                 if (this->o.uSize == 0)
-                    return false;
+                    return true;
 
                 ssize_t
                     iOutputSize = send(
