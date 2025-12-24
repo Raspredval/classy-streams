@@ -286,7 +286,7 @@ namespace io {
                 
                 int
                     fdClient    = this->stream.Handle()->Descriptor();
-                if (!addr.Connect(fdClient)) {
+                if (addr.Connect(fdClient)) {
                     connection.emplace(
                         StreamViewT(this->stream.Handle()));
                 }
