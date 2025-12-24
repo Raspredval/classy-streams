@@ -478,6 +478,7 @@ namespace io {
             const auto&
             flush(this const auto& self) {
                 self.stream().Flush();
+                return self;
             }
         };
 
