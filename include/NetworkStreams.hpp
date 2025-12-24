@@ -51,7 +51,7 @@ namespace io {
                     return this->s.lpRetBuf[--this->s.uRetLen];
                 
                 if (this->i.uBegin == this->i.uEnd) {
-                    if (!this->GetInput() || this->i.uBegin == this->i.uEnd)
+                    if (!this->GetInput())
                         return std::nullopt;
                 }
 
@@ -158,12 +158,13 @@ namespace io {
                     return false;
                 }
 
+                if (iInputSize == 0) {
+                    this->s.bEOF = true;
+                    return false;
+                }
+
                 this->i.uBegin  = 0;
                 this->i.uEnd    = (size_t)iInputSize;
-
-                if (this->i.uEnd != sizeof(this->i.lpData))
-                    this->s.bEOF = true;
-
                 return true;
             }
 
