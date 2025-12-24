@@ -647,14 +647,14 @@ namespace io {
             }
 
             [[nodiscard]] bool
-            Connect(int fd) {
+            Connect(int fd) const noexcept {
                 return
                     access(this->sun_path, F_OK) == 0 &&
                     connect(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
             }
 
             [[nodiscard]] bool
-            Bind(int fd) {
+            Bind(int fd) const noexcept {
                 return
                     unlink(this->sun_path) == 0 &&
                     bind(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
