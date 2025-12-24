@@ -19,7 +19,8 @@ int main() {
             io::cout.put("enter message: ");
             io::cin.get_line(strMessage);
             io::SerialTextOutput(ostream)
-                .put(strMessage).flush();
+                .put(strMessage)
+                .put_endl().flush();
             if (strMessage == "/exit")
                 return EXIT_SUCCESS;
         }
