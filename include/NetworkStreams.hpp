@@ -286,7 +286,7 @@ namespace io {
                 
                 int
                     fdClient    = this->stream.Handle()->Descriptor();
-                if (connect(fdClient, (const struct sockaddr*)&addr, sizeof(AddressT)) == 0) {
+                if (!addr.Connect(fdClient)) {
                     connection.emplace(
                         StreamViewT(this->stream.Handle()));
                 }
@@ -317,7 +317,7 @@ namespace io {
                     throw std::runtime_error("failed to create server socket");
                 }
 
-                if (bind(this->fdServer, (const struct sockaddr*)&addr, sizeof(AddressT)) != 0) {
+                if (!addr.Bind(this->fdServer)) {
                     throw std::runtime_error("failed to bind the server socket to an address");
                 }
 
@@ -533,7 +533,7 @@ namespace io {
 
     namespace IPv4 {
         struct Address :
-        public sockaddr_in
+            public sockaddr_in
         {
             static constexpr sa_family_t
                 AddressFamily   = AF_INET;
@@ -591,6 +591,18 @@ namespace io {
                 freeaddrinfo(lpResult);
             }
 
+            [[nodiscard]] bool
+            Connect(int fd) const noexcept {
+                return
+                    connect(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
+            }
+
+            [[nodiscard]] bool
+            Bind(int fd) const noexcept {
+                return
+                    bind(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
+            }
+
             std::string_view
             ToString() {
                 return inet_ntoa(this->sin_addr);
@@ -632,6 +644,20 @@ namespace io {
                     this->sun_path[i] = strvFilepath[i];
                 }
                 this->sun_path[uStrLen] = '\0';
+            }
+
+            [[nodiscard]] bool
+            Connect(int fd) {
+                return
+                    access(this->sun_path, F_OK) == 0 &&
+                    connect(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
+            }
+
+            [[nodiscard]] bool
+            Bind(int fd) {
+                return
+                    unlink(this->sun_path) == 0 &&
+                    bind(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
             }
         };
 
