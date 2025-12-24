@@ -195,7 +195,7 @@ namespace io {
         };
 
         class NetworkStreamViewBase :
-            public io::__impl::StreamState {
+            virtual public StreamState {
         public:
             NetworkStreamViewBase() = default;
             NetworkStreamViewBase(BufferedNetworkStream* hSocket) :
@@ -363,7 +363,7 @@ namespace io {
     }
 
     class INetworkStreamView :
-        public io::SerialIStream,
+        public SerialIStream,
         public __impl::NetworkStreamViewBase {
     public:
         INetworkStreamView(__impl::BufferedNetworkStream* hStream) :
@@ -389,7 +389,7 @@ namespace io {
     };
 
     class ONetworkStreamView :
-        public io::SerialIOStream,
+        public SerialOStream,
         public __impl::NetworkStreamViewBase {
     public:
         ONetworkStreamView(__impl::BufferedNetworkStream* hStream) :
@@ -410,7 +410,7 @@ namespace io {
     };
 
     class IONetworkStreamView :
-        public io::SerialIOStream,
+        public SerialIOStream,
         public __impl::NetworkStreamViewBase {
     public:
         IONetworkStreamView(__impl::BufferedNetworkStream* hStream) :
@@ -443,7 +443,7 @@ namespace io {
     };
 
     class INetworkStream :
-        public io::SerialIStream,
+        public SerialIStream,
         public __impl::NetworkStreamBase {
     public:
         INetworkStream(int fdSocket) :
@@ -469,7 +469,7 @@ namespace io {
     };
 
     class ONetworkStream :
-        public io::SerialIOStream,
+        public SerialOStream,
         public __impl::NetworkStreamBase {
     public:
         ONetworkStream(int fdSocket) :
@@ -490,7 +490,7 @@ namespace io {
     };
 
     class IONetworkStream :
-        public io::SerialIOStream,
+        public SerialIOStream,
         public __impl::NetworkStreamBase {
     public:
         IONetworkStream(int fdSocket) :
