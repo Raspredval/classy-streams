@@ -39,6 +39,10 @@ namespace io {
             }
 
             ~BufferedNetworkStream() noexcept {
+                while (true) {
+                    if (!this->GetInput())
+                        break;
+                }
                 shutdown(this->s.fdSocket, SHUT_RD);
                 this->Flush();
                 shutdown(this->s.fdSocket, SHUT_RDWR);
@@ -144,9 +148,6 @@ namespace io {
         private:
             bool
             GetInput() {
-                if (this->i.uBegin != this->i.uEnd)
-                    return false;
-
                 ssize_t
                     iInputSize  = recv(
                                     this->s.fdSocket,
