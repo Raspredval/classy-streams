@@ -199,36 +199,36 @@ namespace io {
         public:
             NetworkStreamViewBase() = default;
             NetworkStreamViewBase(BufferedNetworkStream* hSocket) :
-                hSocket(hSocket) {}
+                hStream(hSocket) {}
 
             [[nodiscard]] bool
             EndOfStream() const noexcept override {
-                return this->hSocket->EndOfStream();
+                return this->hStream->EndOfStream();
             }
 
             [[nodiscard]] bool
             Good() const noexcept override {
-                return !this->hSocket->Error();
+                return !this->hStream->Error();
             }
 
             bool
             Flush() noexcept override {
-                return this->hSocket->Flush();
+                return this->hStream->Flush();
             }
 
             void
             ClearFlags() noexcept override {
-                return this->hSocket->ClearFlags();
+                return this->hStream->ClearFlags();
             }
         
             BufferedNetworkStream*
             Handle() const noexcept {
-                return this->hSocket;
+                return this->hStream;
             }
 
         protected:
             BufferedNetworkStream*
-                hSocket = nullptr;
+                hStream = nullptr;
         };
 
         class NetworkStreamBase :
@@ -240,8 +240,8 @@ namespace io {
             NetworkStreamBase(const NetworkStreamBase&) = delete;
 
             NetworkStreamBase(NetworkStreamBase&& obj) noexcept {
-                this->hSocket   = obj.hSocket;
-                obj.hSocket     = nullptr;
+                this->hStream   = obj.hStream;
+                obj.hStream     = nullptr;
             }
 
             NetworkStreamBase&
@@ -251,75 +251,49 @@ namespace io {
             operator=(NetworkStreamBase&& obj) noexcept {
                 NetworkStreamBase
                     temp    = std::move(obj);
-                std::swap(this->hSocket, temp.hSocket);
+                std::swap(this->hStream, temp.hStream);
                 return *this;
             }
 
             ~NetworkStreamBase() noexcept {
-                if (this->hSocket != nullptr) {
-                    delete this->hSocket;
-                    this->hSocket   = nullptr;
+                if (this->hStream != nullptr) {
+                    delete this->hStream;
+                    this->hStream   = nullptr;
                 }
             }
         };
 
-        template<typename AddressT, typename StreamT> requires
-            std::derived_from<StreamT, io::__impl::StreamState>
+        template<typename AddressT, typename StreamViewT> requires
+            std::derived_from<StreamViewT, NetworkStreamViewBase>
         class BasicClient {
         public:
             using AddressType       =
                 AddressT;
-            using StreamType        =
-                StreamT;
+            using StreamViewType    =
+                StreamViewT;
             using ConnectionType    =
-                std::optional<StreamType>;
+                std::optional<StreamViewType>;
 
             BasicClient() :
-                fdClient(socket(AddressT::AddressFamily, SOCK_STREAM, 0))
-            {
-                if (this->fdClient < 0) {
-                    throw std::runtime_error("failed to create a stream socket");
-                }
-            }
-
-            BasicClient(const BasicClient&) = delete;
-            BasicClient(BasicClient&& obj) noexcept {
-                this->fdClient  = obj.fdClient;
-                obj.fdClient    = -1;
-            }
-
-            BasicClient&
-            operator=(const BasicClient&) = delete;
-            BasicClient&
-            operator=(BasicClient&& obj) noexcept {
-                BasicClient
-                    temp    = std::move(obj);
-                std::swap(this->fdClient, temp.fdClient);
-                return *this;
-            }
+                stream(socket(AddressType::AddressFamily, SOCK_STREAM, 0)) {}
 
             ConnectionType
             Connect(const AddressT& addr) {
-                if (connect(this->fdClient, (const struct sockaddr*)&addr, sizeof(AddressT)) != 0)
+                int
+                    fdClient    = this->stream.Handle()->Descriptor();
+                if (connect(fdClient, (const struct sockaddr*)&addr, sizeof(AddressT)) != 0)
                     return std::nullopt;
 
-                return StreamT(this->fdClient);
-            }
-
-            ~BasicClient() {
-                if (this->fdClient >= 0) {
-                    shutdown(this->fdClient, SHUT_RDWR);
-                    close(this->fdClient);
-                }
+                return StreamViewT(this->stream.Handle());
             }
 
         private:
-            int
-                fdClient = -1;
+            NetworkStreamBase
+                stream;
         };
 
         template<typename AddressT, typename StreamT> requires
-            std::derived_from<StreamT, io::__impl::StreamState>
+            std::derived_from<StreamT, NetworkStreamBase>
         class BasicServer {
         public:
             using AddressType       =
@@ -386,168 +360,165 @@ namespace io {
             int
                 fdServer = -1;
         };
-
-        // TODO: NetworkStreamViewBase
-        // TODO: NetworkStreamBase
     }
 
-    class INonOwningNetworkStream :
-        public  SerialIStream,
-        public  __impl::NonOwningNetworkStreamBase {
+    class INetworkStreamView :
+        public io::SerialIStream,
+        public __impl::NetworkStreamViewBase {
     public:
-        INonOwningNetworkStream(int fdSocket) :
-            NonOwningNetworkStreamBase(fdSocket)
+        INetworkStreamView(__impl::BufferedNetworkStream* hStream) :
+            NetworkStreamViewBase(hStream)
         {
-            shutdown(this->Handle(), SHUT_WR);
+            shutdown(this->hStream->Descriptor(), SHUT_WR);
         }
+
+        std::optional<std::byte>
+        Read() override {
+            return this->hStream->Read();
+        }
+
+        size_t
+        ReadSome(std::span<std::byte> buffer) override {
+            return this->hStream->ReadSome(buffer);
+        }
+
+        bool
+        PutBack(std::byte c) override {
+            return this->hStream->PutBack(c);
+        }
+    };
+
+    class ONetworkStreamView :
+        public io::SerialIOStream,
+        public __impl::NetworkStreamViewBase {
+    public:
+        ONetworkStreamView(__impl::BufferedNetworkStream* hStream) :
+            NetworkStreamViewBase(hStream)
+        {
+            shutdown(this->hStream->Descriptor(), SHUT_RD);
+        }
+
+        bool
+        Write(std::byte c) override {
+            return this->hStream->Write(c);
+        }
+
+        size_t
+        WriteSome(std::span<const std::byte> buffer) override {
+            return this->hStream->WriteSome(buffer);
+        }
+    };
+
+    class IONetworkStreamView :
+        public io::SerialIOStream,
+        public __impl::NetworkStreamViewBase {
+    public:
+        IONetworkStreamView(__impl::BufferedNetworkStream* hStream) :
+            NetworkStreamViewBase(hStream) {}
         
         std::optional<std::byte>
         Read() override {
-            return this->NonOwningNetworkStreamBase::Read();
+            return this->hStream->Read();
         }
 
         size_t
         ReadSome(std::span<std::byte> buffer) override {
-            return this->NonOwningNetworkStreamBase::ReadSome(buffer);
+            return this->hStream->ReadSome(buffer);
         }
 
         bool
         PutBack(std::byte c) override {
-            return this->NonOwningNetworkStreamBase::PutBack(c);
-        }
-    };
-
-    class ONonOwningNetworkStream :
-        public  SerialOStream,
-        public  __impl::NonOwningNetworkStreamBase {
-    public:
-        ONonOwningNetworkStream(int fdSocket) :
-            NonOwningNetworkStreamBase(fdSocket)
-        {
-            shutdown(this->Handle(), SHUT_RD);
+            return this->hStream->PutBack(c);
         }
 
         bool
         Write(std::byte c) override {
-            return this->NonOwningNetworkStreamBase::Write(c);
+            return this->hStream->Write(c);
         }
 
         size_t
         WriteSome(std::span<const std::byte> buffer) override {
-            return this->NonOwningNetworkStreamBase::WriteSome(buffer);
+            return this->hStream->WriteSome(buffer);
         }
     };
 
-    class IONonOwningNetworkStream :
-        public  SerialIOStream,
-        public  __impl::NonOwningNetworkStreamBase {
+    class INetworkStream :
+        public io::SerialIStream,
+        public __impl::NetworkStreamBase {
     public:
-        IONonOwningNetworkStream(int fdSocket) :
-            NonOwningNetworkStreamBase(fdSocket) {}
+        INetworkStream(int fdSocket) :
+            NetworkStreamBase(fdSocket)
+        {
+            shutdown(this->hStream->Descriptor(), SHUT_WR);
+        }
 
         std::optional<std::byte>
         Read() override {
-            return this->NonOwningNetworkStreamBase::Read();
+            return this->hStream->Read();
         }
 
         size_t
         ReadSome(std::span<std::byte> buffer) override {
-            return this->NonOwningNetworkStreamBase::ReadSome(buffer);
+            return this->hStream->ReadSome(buffer);
         }
 
         bool
         PutBack(std::byte c) override {
-            return this->NonOwningNetworkStreamBase::PutBack(c);
+            return this->hStream->PutBack(c);
+        }
+    };
+
+    class ONetworkStream :
+        public io::SerialIOStream,
+        public __impl::NetworkStreamBase {
+    public:
+        ONetworkStream(int fdSocket) :
+            NetworkStreamBase(fdSocket)
+        {
+            shutdown(this->hStream->Descriptor(), SHUT_RD);
         }
 
         bool
         Write(std::byte c) override {
-            return this->NonOwningNetworkStreamBase::Write(c);
+            return this->hStream->Write(c);
         }
 
         size_t
         WriteSome(std::span<const std::byte> buffer) override {
-            return this->NonOwningNetworkStreamBase::WriteSome(buffer);
+            return this->hStream->WriteSome(buffer);
         }
     };
 
-    class IOwningNetworkStream :
-        public  SerialIStream,
-        public  __impl::OwningNetworkStreamBase {
+    class IONetworkStream :
+        public io::SerialIOStream,
+        public __impl::NetworkStreamBase {
     public:
-        IOwningNetworkStream(int fdSocket) :
-            OwningNetworkStreamBase(fdSocket)
-        {
-            shutdown(this->Handle(), SHUT_WR);
-        }
+        IONetworkStream(int fdSocket) :
+            NetworkStreamBase(fdSocket) {}
         
         std::optional<std::byte>
         Read() override {
-            return this->OwningNetworkStreamBase::Read();
+            return this->hStream->Read();
         }
 
         size_t
         ReadSome(std::span<std::byte> buffer) override {
-            return this->OwningNetworkStreamBase::ReadSome(buffer);
+            return this->hStream->ReadSome(buffer);
         }
 
         bool
         PutBack(std::byte c) override {
-            return this->OwningNetworkStreamBase::PutBack(c);
-        }
-    };
-
-    class OOwningNetworkStream :
-        public  SerialOStream,
-        public  __impl::OwningNetworkStreamBase {
-    public:
-        OOwningNetworkStream(int fdSocket) :
-            OwningNetworkStreamBase(fdSocket)
-        {
-            shutdown(this->Handle(), SHUT_RD);
+            return this->hStream->PutBack(c);
         }
 
         bool
         Write(std::byte c) override {
-            return this->OwningNetworkStreamBase::Write(c);
+            return this->hStream->Write(c);
         }
 
         size_t
         WriteSome(std::span<const std::byte> buffer) override {
-            return this->OwningNetworkStreamBase::WriteSome(buffer);
-        }
-    };
-
-    class IOOwningNetworkStream :
-        public  SerialIOStream,
-        public  __impl::OwningNetworkStreamBase {
-    public:
-        IOOwningNetworkStream(int fdSocket) :
-            OwningNetworkStreamBase(fdSocket) {}
-
-        std::optional<std::byte>
-        Read() override {
-            return this->OwningNetworkStreamBase::Read();
-        }
-
-        size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->OwningNetworkStreamBase::ReadSome(buffer);
-        }
-
-        bool
-        PutBack(std::byte c) override {
-            return this->OwningNetworkStreamBase::PutBack(c);
-        }
-
-        bool
-        Write(std::byte c) override {
-            return this->OwningNetworkStreamBase::Write(c);
-        }
-
-        size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->OwningNetworkStreamBase::WriteSome(buffer);
+            return this->hStream->WriteSome(buffer);
         }
     };
 
@@ -618,18 +589,18 @@ namespace io {
         };
 
         using INetworkServer    =
-            __impl::BasicServer<IPv4::Address, IOwningNetworkStream>;
+            __impl::BasicServer<IPv4::Address, INetworkStream>;
         using ONetworkServer    =
-            __impl::BasicServer<IPv4::Address, OOwningNetworkStream>;
+            __impl::BasicServer<IPv4::Address, ONetworkStream>;
         using IONetworkServer   =
-            __impl::BasicServer<IPv4::Address, IOOwningNetworkStream>;
+            __impl::BasicServer<IPv4::Address, IONetworkStream>;
 
         using INetworkClient    =
-            __impl::BasicClient<IPv4::Address, INonOwningNetworkStream>;
+            __impl::BasicClient<IPv4::Address, INetworkStreamView>;
         using ONetworkClient    =
-            __impl::BasicClient<IPv4::Address, ONonOwningNetworkStream>;
+            __impl::BasicClient<IPv4::Address, ONetworkStreamView>;
         using IONetworkClient   =
-            __impl::BasicClient<IPv4::Address, IONonOwningNetworkStream>;
+            __impl::BasicClient<IPv4::Address, IONetworkStreamView>;
     }
 
     namespace Local {
@@ -656,17 +627,17 @@ namespace io {
         };
 
         using INetworkServer    =
-            __impl::BasicServer<Local::Address, IOwningNetworkStream>;
+            __impl::BasicServer<Local::Address, INetworkStream>;
         using ONetworkServer    =
-            __impl::BasicServer<Local::Address, OOwningNetworkStream>;
+            __impl::BasicServer<Local::Address, ONetworkStream>;
         using IONetworkServer   =
-            __impl::BasicServer<Local::Address, IOOwningNetworkStream>;
+            __impl::BasicServer<Local::Address, IONetworkStream>;
 
         using INetworkClient    =
-            __impl::BasicClient<Local::Address, INonOwningNetworkStream>;
+            __impl::BasicClient<Local::Address, INetworkStreamView>;
         using ONetworkClient    =
-            __impl::BasicClient<Local::Address, ONonOwningNetworkStream>;
+            __impl::BasicClient<Local::Address, ONetworkStreamView>;
         using IONetworkClient   =
-            __impl::BasicClient<Local::Address, IONonOwningNetworkStream>;
+            __impl::BasicClient<Local::Address, IONetworkStreamView>;
     }
 }
