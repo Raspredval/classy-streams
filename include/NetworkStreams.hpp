@@ -38,7 +38,7 @@ namespace io {
                 this->s.fdSocket    = fdSocket;
             }
 
-            ~BufferedNetworkStream() {
+            ~BufferedNetworkStream() noexcept {
                 shutdown(this->s.fdSocket, SHUT_RD);
                 this->Flush();
                 shutdown(this->s.fdSocket, SHUT_WR);
@@ -192,6 +192,75 @@ namespace io {
                 std::byte
                     lpRetBuf[std::max(sizeof(int), 2uz) - 1];
             } s;
+        };
+
+        class NetworkStreamViewBase :
+            public io::__impl::StreamState {
+        public:
+            NetworkStreamViewBase() = default;
+            NetworkStreamViewBase(BufferedNetworkStream* hSocket) :
+                hSocket(hSocket) {}
+
+            [[nodiscard]] bool
+            EndOfStream() const noexcept override {
+                return this->hSocket->EndOfStream();
+            }
+
+            [[nodiscard]] bool
+            Good() const noexcept override {
+                return !this->hSocket->Error();
+            }
+
+            bool
+            Flush() noexcept override {
+                return this->hSocket->Flush();
+            }
+
+            void
+            ClearFlags() noexcept override {
+                return this->hSocket->ClearFlags();
+            }
+        
+            BufferedNetworkStream*
+            Handle() const noexcept {
+                return this->hSocket;
+            }
+
+        protected:
+            BufferedNetworkStream*
+                hSocket = nullptr;
+        };
+
+        class NetworkStreamBase :
+            public NetworkStreamViewBase {
+        public:
+            NetworkStreamBase(int fdSocket) :
+                NetworkStreamViewBase(new BufferedNetworkStream(fdSocket)) {}
+
+            NetworkStreamBase(const NetworkStreamBase&) = delete;
+
+            NetworkStreamBase(NetworkStreamBase&& obj) noexcept {
+                this->hSocket   = obj.hSocket;
+                obj.hSocket     = nullptr;
+            }
+
+            NetworkStreamBase&
+            operator=(const NetworkStreamBase&) = delete;
+
+            NetworkStreamBase&
+            operator=(NetworkStreamBase&& obj) noexcept {
+                NetworkStreamBase
+                    temp    = std::move(obj);
+                std::swap(this->hSocket, temp.hSocket);
+                return *this;
+            }
+
+            ~NetworkStreamBase() noexcept {
+                if (this->hSocket != nullptr) {
+                    delete this->hSocket;
+                    this->hSocket   = nullptr;
+                }
+            }
         };
 
         template<typename AddressT, typename StreamT> requires
