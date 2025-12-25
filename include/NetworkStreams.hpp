@@ -35,6 +35,8 @@ namespace io {
                 if (fdSocket < 0)
                     throw std::runtime_error("failed to create a socket");
 
+                this->i.lpData      = new std::byte[this->i.uBufCap];
+                this->o.lpData      = new std::byte[this->o.uBufCap];
                 this->s.fdSocket    = fdSocket;
             }
 
@@ -47,6 +49,8 @@ namespace io {
                 this->Flush();
                 shutdown(this->s.fdSocket, SHUT_RDWR);
                 close(this->s.fdSocket);
+                delete[] this->i.lpData;
+                delete[] this->o.lpData;
             }
 
             std::optional<std::byte>
@@ -64,7 +68,7 @@ namespace io {
 
             bool
             Write(std::byte c) noexcept {
-                if (this->o.uSize == sizeof(o.lpData)) {
+                if (this->o.uSize == this->o.uBufCap) {
                     if (!this->Flush())
                         return false;
                 }
@@ -152,7 +156,7 @@ namespace io {
                     iInputSize  = recv(
                                     this->s.fdSocket,
                                     this->i.lpData,
-                                    sizeof(this->i.lpData),
+                                    this->i.uBufCap,
                                     0);
                 if (iInputSize < 0) {
                     this->s.bErr = true;
@@ -170,16 +174,20 @@ namespace io {
             }
 
             struct InputBuffer {
-                std::byte
-                    lpData[sizeof(size_t) * 32];
+                static constexpr size_t
+                    uBufCap     = sizeof(size_t) * 1024;
+                std::byte*
+                    lpData      = nullptr;
                 size_t
                     uBegin      = 0,
                     uEnd        = 0;
             } i;
 
             struct OutputBuffer {
-                std::byte
-                    lpData[sizeof(size_t) * 32];
+                static constexpr size_t
+                    uBufCap     = sizeof(size_t) * 1024;
+                std::byte*
+                    lpData      = nullptr;
                 size_t
                     uSize       = 0;
             } o;
@@ -192,7 +200,7 @@ namespace io {
                     bErr    : 1 = false,
                     uRetLen : 6 = 0;
                 std::byte
-                    lpRetBuf[std::max(sizeof(int), 2uz) - 1];
+                    lpRetBuf[sizeof(int) - 1];
             } s;
         };
 
