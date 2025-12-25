@@ -484,12 +484,12 @@ namespace io {
             }
 
             template<typename V> requires
-                std::same_as<V, std::span<const std::byte>> ||
+                std::constructible_from<std::span<const std::byte>, V> ||
                 std::integral<V> ||
                 std::floating_point<V>
             const auto&
             put(this const auto& self, V val) {
-                if constexpr (std::same_as<V, std::span<const std::byte>>)
+                if constexpr (std::constructible_from<std::span<const std::byte>, V>)
                     return self.put_data(val);
                 else if constexpr (std::integral<V>)
                     return self.put_int(val);
@@ -536,16 +536,14 @@ namespace io {
             }
 
             template<typename V> requires
-                std::same_as<V, std::span<std::byte>> || 
-                (
-                    (!std::is_const_v<V> && std::is_lvalue_reference_v<V>) && (
-                        std::integral<std::decay_t<V>> ||
-                        std::floating_point<std::decay_t<V>>
-                    )
-                )
+                std::constructible_from<std::span<std::byte>, V> ||
+                (std::is_lvalue_reference_v<V> && !std::is_const_v<V> && (
+                    std::integral<std::decay_t<V>> ||
+                    std::floating_point<std::decay_t<V>>
+                ))
             const auto&
-            get(this const auto& self, V value) {
-                if constexpr (std::same_as<V, std::span<std::byte>>)
+            get(this const auto& self, V&& value) {
+                if constexpr (std::constructible_from<std::span<std::byte>, V>)
                     return self.get_data(value);
                 else if constexpr (std::integral<std::decay_t<V>>)
                     return self.get_int(value);
