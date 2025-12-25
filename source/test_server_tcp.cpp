@@ -4,7 +4,7 @@
 int main() {
     try {
         io::IPv4::INetworkServer
-            tcp_server(io::IPv4::Address{1337});
+            tcp_server(io::IPv4::Addr{1337});
 
         io::cout.put("accepting connections\n");
         

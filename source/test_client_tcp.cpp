@@ -7,7 +7,7 @@ int main() {
             tcp_client;
         
         auto
-            optConnection   = tcp_client.Connect({"127.0.0.1", "1337"});
+            optConnection   = tcp_client.Connect(io::IPv4::Addr{"127.0.0.1", "1337"});
         if (!optConnection)
             throw std::runtime_error("failed to connect to a server");
 

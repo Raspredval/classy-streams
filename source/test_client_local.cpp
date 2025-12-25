@@ -7,7 +7,7 @@ int main() {
             local_client;
         
         auto
-            optConnection   = local_client.Connect({"./local_socket"});
+            optConnection   = local_client.Connect(io::Local::Addr{"./local_socket"});
         if (!optConnection)
             throw std::runtime_error("failed to connect to a server");
 

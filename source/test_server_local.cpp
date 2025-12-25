@@ -4,7 +4,7 @@
 int main() {
     try {
         io::Local::INetworkServer
-            local_server({"./local_socket"});
+            local_server(io::Local::Addr{"./local_socket"});
         
         io::cout.put("accepting connections\n");
 
