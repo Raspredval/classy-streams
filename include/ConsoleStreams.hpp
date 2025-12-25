@@ -1,6 +1,6 @@
 #pragma once
 #include "FileStreams.hpp"
-#include "TextIO.hpp"
+#include "IOReadWrite.hpp"
 
 namespace io {
     namespace __impl {
