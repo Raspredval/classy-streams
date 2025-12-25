@@ -8,7 +8,7 @@
 
 namespace io {
     namespace __impl {
-        class SerialTextOutput {
+        class TextOutputBase {
         public:
             const auto&
             put_char(this const auto& self, char c) {
@@ -148,7 +148,7 @@ namespace io {
             }
         };
 
-        class SerialTextInput {
+        class TextInputBase {
         public:
             const auto&
             get_char(this const auto& self, char& out) {
@@ -461,7 +461,7 @@ namespace io {
             }
         };
 
-        class SerialBinaryOutput {
+        class BinaryOutputBase {
         public:
             const auto&
             put_data(this const auto& self, std::span<const std::byte> buffer) {
@@ -517,7 +517,7 @@ namespace io {
             }
         };
 
-        class SerialBinaryInput {
+        class BinaryInputBase {
         public:
             const auto&
             get_data(this const auto& self, std::span<std::byte> buffer) {
@@ -527,12 +527,12 @@ namespace io {
 
             const auto&
             get_int(this const auto& self, std::integral auto& value) {
-                return self.put_data({ (std::byte*)&value, sizeof(value) });
+                return self.get_data({ (std::byte*)&value, sizeof(value) });
             }
 
             const auto&
             get_float(this const auto& self, std::floating_point auto& value) {
-                return self.put_data({ (std::byte*)&value, sizeof(value) });
+                return self.get_data({ (std::byte*)&value, sizeof(value) });
             }
 
             template<typename V> requires
@@ -615,7 +615,7 @@ namespace io {
 
     class SerialTextInput :
         public __impl::SerialIOBase,
-        public __impl::SerialTextInput {
+        public __impl::TextInputBase {
     public:
         SerialTextInput(const SerialTextInput&) = delete;
         
@@ -634,7 +634,7 @@ namespace io {
 
     class SerialTextOutput :
         public __impl::SerialIOBase,
-        public __impl::SerialTextOutput {
+        public __impl::TextOutputBase {
     public:
         SerialTextOutput(const SerialTextOutput&) = delete;
         
@@ -653,8 +653,8 @@ namespace io {
 
     class SerialTextIO :
         public __impl::SerialIOBase,
-        public __impl::SerialTextInput,
-        public __impl::SerialTextOutput {
+        public __impl::TextInputBase,
+        public __impl::TextOutputBase {
     public:
         SerialTextIO(const SerialTextIO&) = delete;
 
@@ -673,7 +673,7 @@ namespace io {
 
     class TextInput :
         public __impl::RandomAccessIOBase,
-        public __impl::SerialTextInput {
+        public __impl::TextInputBase {
     public:
         TextInput(const TextInput&) = delete;
         
@@ -692,7 +692,7 @@ namespace io {
 
     class TextOutput :
         public __impl::RandomAccessIOBase,
-        public __impl::SerialTextOutput {
+        public __impl::TextOutputBase {
     public:
         TextOutput(const TextOutput&) = delete;
         
@@ -711,8 +711,8 @@ namespace io {
 
     class TextIO :
         public __impl::RandomAccessIOBase,
-        public __impl::SerialTextInput,
-        public __impl::SerialTextOutput {
+        public __impl::TextInputBase,
+        public __impl::TextOutputBase {
     public:
         TextIO(const TextIO&) = delete;
 
@@ -731,7 +731,7 @@ namespace io {
 
     class SerialBinaryInput :
         public __impl::SerialIOBase,
-        public __impl::SerialBinaryInput {
+        public __impl::BinaryInputBase {
     public:
         SerialBinaryInput(const SerialBinaryInput&) = delete;
         
@@ -750,7 +750,7 @@ namespace io {
 
     class SerialBinaryOutput :
         public __impl::SerialIOBase,
-        public __impl::SerialBinaryOutput {
+        public __impl::BinaryOutputBase {
     public:
         SerialBinaryOutput(const SerialBinaryOutput&) = delete;
         
@@ -769,8 +769,8 @@ namespace io {
 
     class SerialBinaryIO :
         public __impl::SerialIOBase,
-        public __impl::SerialBinaryInput,
-        public __impl::SerialBinaryOutput {
+        public __impl::BinaryInputBase,
+        public __impl::BinaryOutputBase {
     public:
         SerialBinaryIO(const SerialBinaryIO&) = delete;
 
@@ -789,7 +789,7 @@ namespace io {
 
     class BinaryInput :
         public __impl::RandomAccessIOBase,
-        public __impl::SerialBinaryInput {
+        public __impl::BinaryInputBase {
     public:
         BinaryInput(const BinaryInput&) = delete;
         
@@ -808,7 +808,7 @@ namespace io {
 
     class BinaryOutput :
         public __impl::RandomAccessIOBase,
-        public __impl::SerialBinaryOutput {
+        public __impl::BinaryOutputBase {
     public:
         BinaryOutput(const BinaryOutput&) = delete;
         
@@ -827,8 +827,8 @@ namespace io {
 
     class BinaryIO :
         public __impl::RandomAccessIOBase,
-        public __impl::SerialBinaryInput,
-        public __impl::SerialBinaryOutput {
+        public __impl::BinaryInputBase,
+        public __impl::BinaryOutputBase {
     public:
         BinaryIO(const BinaryIO&) = delete;
 
