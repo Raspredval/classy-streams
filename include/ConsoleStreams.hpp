@@ -3,20 +3,11 @@
 #include "IOReadWrite.hpp"
 
 namespace io {
-    namespace __impl {
-        static IFileStreamView
-            __std_input(stdin);
-        static OFileStreamView
-            __std_output(stdout),
-            __std_error(stderr);
-    }
-
-    static SerialIStream&
-        std_input   = __impl::__std_input;
-    static SerialOStream&
-        std_output  = __impl::__std_output;
-    static SerialOStream&
-        std_error   = __impl::__std_error;
+    static SerialIFileStreamView
+        std_input   = ::stdin;
+    static SerialOFileStreamView
+        std_output  = ::stdout,
+        std_error   = ::stderr;
 
     static SerialTextInput
         cin(std_input);
