@@ -28,8 +28,6 @@ set(CPACK_INSTALL_PREFIX "/usr/local/")
 cpack_add_component(classy-streams-headers
     DISPLAY "Header files")
 
-include(CTest)
-
 set(CXX_WARNINGS "-Wall" "-Wextra" "-Wconversion" "-Werror")
 
 add_executable(test_client_local
@@ -50,15 +48,6 @@ target_include_directories(test_server_local
     PRIVATE
         "include/")
 
-add_test(
-    NAME    test_server_local
-    COMMAND test_server_local)
-
-add_test(
-    NAME    test_client_local
-    COMMAND test_client_local
-    DEPENDS test_server_local)
-
 add_executable(test_client_tcp
     "source/test_client_tcp.cpp")
 target_compile_options(test_client_tcp
@@ -77,11 +66,11 @@ target_include_directories(test_server_tcp
     PRIVATE
         "include/")
 
-add_test(
-    NAME    test_server_tcp
-    COMMAND test_server_tcp)
-
-add_test(
-    NAME    test_client_tcp
-    COMMAND test_client_tcp
-    DEPENDS test_server_tcp)
+add_executable(test_binary_io
+    "source/test_binary_io.cpp")
+target_compile_options(test_binary_io
+    PRIVATE
+        ${CXX_WARNINGS})
+target_include_directories(test_binary_io
+    PRIVATE
+        "include/")
