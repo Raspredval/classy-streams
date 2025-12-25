@@ -532,15 +532,15 @@ namespace io {
     };
 
     namespace IPv4 {
-        struct Address :
+        struct Addr :
             public sockaddr_in
         {
             static constexpr sa_family_t
                 AddressFamily   = AF_INET;
 
-            Address() = default;
+            Addr() = default;
 
-            Address(in_addr_t uAddress, in_port_t uPort) :
+            Addr(in_addr_t uAddress, in_port_t uPort) :
                 sockaddr_in {
                     .sin_family = AF_INET,
                     .sin_port   = htons(uPort),
@@ -548,10 +548,10 @@ namespace io {
                     .sin_zero   = {}
                 } {}
 
-            Address(in_port_t uPort) :
-                Address(INADDR_ANY, uPort) {}
+            Addr(in_port_t uPort) :
+                Addr(INADDR_ANY, uPort) {}
 
-            Address(std::string_view strvAddress, std::string_view strvService = {}) {
+            Addr(std::string_view strvAddress, std::string_view strvService = {}) {
                 struct addrinfo
                     hints   = {
                         .ai_flags       = AI_PASSIVE,
@@ -594,13 +594,13 @@ namespace io {
             [[nodiscard]] bool
             Connect(int fd) const noexcept {
                 return
-                    connect(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
+                    connect(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
             }
 
             [[nodiscard]] bool
             Bind(int fd) const noexcept {
                 return
-                    bind(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
+                    bind(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
             }
 
             std::string_view
@@ -610,30 +610,30 @@ namespace io {
         };
 
         using INetworkServer    =
-            __impl::BasicServer<IPv4::Address, INetworkStream>;
+            __impl::BasicServer<IPv4::Addr, INetworkStream>;
         using ONetworkServer    =
-            __impl::BasicServer<IPv4::Address, ONetworkStream>;
+            __impl::BasicServer<IPv4::Addr, ONetworkStream>;
         using IONetworkServer   =
-            __impl::BasicServer<IPv4::Address, IONetworkStream>;
+            __impl::BasicServer<IPv4::Addr, IONetworkStream>;
 
         using INetworkClient    =
-            __impl::BasicClient<IPv4::Address, INetworkStreamView>;
+            __impl::BasicClient<IPv4::Addr, INetworkStreamView>;
         using ONetworkClient    =
-            __impl::BasicClient<IPv4::Address, ONetworkStreamView>;
+            __impl::BasicClient<IPv4::Addr, ONetworkStreamView>;
         using IONetworkClient   =
-            __impl::BasicClient<IPv4::Address, IONetworkStreamView>;
+            __impl::BasicClient<IPv4::Addr, IONetworkStreamView>;
     }
 
     namespace Local {
-        struct Address :
+        struct Addr :
             public sockaddr_un
         {
             static constexpr sa_family_t
                 AddressFamily   = AF_LOCAL;
             
-            Address() = default;
+            Addr() = default;
 
-            Address(std::string_view strvFilepath) :
+            Addr(std::string_view strvFilepath) :
                 sockaddr_un{ .sun_family = AF_LOCAL, .sun_path = {} }
             {
                 size_t
@@ -650,29 +650,29 @@ namespace io {
             Connect(int fd) const noexcept {
                 return
                     access(this->sun_path, F_OK) == 0 &&
-                    connect(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
+                    connect(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
             }
 
             [[nodiscard]] bool
             Bind(int fd) const noexcept {
                 return
                     unlink(this->sun_path) == 0 &&
-                    bind(fd, (const struct sockaddr*)this, sizeof(Address)) == 0;
+                    bind(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
             }
         };
 
         using INetworkServer    =
-            __impl::BasicServer<Local::Address, INetworkStream>;
+            __impl::BasicServer<Local::Addr, INetworkStream>;
         using ONetworkServer    =
-            __impl::BasicServer<Local::Address, ONetworkStream>;
+            __impl::BasicServer<Local::Addr, ONetworkStream>;
         using IONetworkServer   =
-            __impl::BasicServer<Local::Address, IONetworkStream>;
+            __impl::BasicServer<Local::Addr, IONetworkStream>;
 
         using INetworkClient    =
-            __impl::BasicClient<Local::Address, INetworkStreamView>;
+            __impl::BasicClient<Local::Addr, INetworkStreamView>;
         using ONetworkClient    =
-            __impl::BasicClient<Local::Address, ONetworkStreamView>;
+            __impl::BasicClient<Local::Addr, ONetworkStreamView>;
         using IONetworkClient   =
-            __impl::BasicClient<Local::Address, IONetworkStreamView>;
+            __impl::BasicClient<Local::Addr, IONetworkStreamView>;
     }
 }
