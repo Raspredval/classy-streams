@@ -41,12 +41,9 @@ namespace io {
             }
 
             ~BufferedNetworkStream() noexcept {
-                while (true) {
-                    if (!this->GetInput())
-                        break;
-                }
-                shutdown(this->s.fdSocket, SHUT_RD);
                 this->Flush();
+                shutdown(this->s.fdSocket, SHUT_RD);
+                while (this->GetInput()) {}
                 shutdown(this->s.fdSocket, SHUT_RDWR);
                 close(this->s.fdSocket);
                 delete[] this->i.lpData;
