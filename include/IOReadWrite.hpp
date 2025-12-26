@@ -565,6 +565,17 @@ namespace io {
                 else
                     return self;
             }
+
+            const auto&
+            forward_data_from(this const auto& self, io::SerialIStream& from, size_t uByteCount = SIZE_MAX);
+
+            template<std::integral V>
+            const auto&
+            forward_int_from(this const auto& self, io::SerialIStream& from);
+
+            template<std::floating_point V>
+            const auto&
+            forward_float_from(this const auto& self, io::SerialIStream& from);
         };
 
         class BinaryInputBase {
@@ -602,6 +613,17 @@ namespace io {
                 else
                     return self;
             }
+
+            const auto&
+            forward_data_to(this const auto& self, io::SerialOStream& to, size_t uByteCount = SIZE_MAX);
+
+            template<std::integral V>
+            const auto&
+            forward_int_to(this const auto& self, io::SerialOStream& to);
+
+            template<std::floating_point V>
+            const auto&
+            forward_float_to(this const auto& self, io::SerialOStream& to);
         };
         
         class SerialIOBase {
@@ -1044,6 +1066,74 @@ namespace io {
             io::SerialTextOutput
                 out(to);
             out.put_float_p(fValue, precision);
+            return self;
+        }
+
+        const auto&
+        BinaryOutputBase::forward_data_from(this const auto& self, io::SerialIStream& from, size_t uByteCount) {
+            while (uByteCount != 0) {
+                std::optional<std::byte>
+                    optc = from.Read();
+                if (!optc)
+                    break;
+                self.stream().Write(*optc);
+                uByteCount -= 1;
+            }
+
+            return self;
+        }
+
+        template<std::integral V>
+        const auto&
+        BinaryOutputBase::forward_int_from(this const auto& self, io::SerialIStream& from) {
+            V iValue;
+            SerialBinaryInput(from)
+                .get_int(iValue);
+            self.put_int(iValue);
+            return self;
+        }
+
+        template<std::floating_point V>
+        const auto&
+        BinaryOutputBase::forward_float_from(this const auto& self, io::SerialIStream& from) {
+            V fValue;
+            SerialBinaryInput(from)
+                .get_float(fValue);
+            self.put_float(fValue);
+            return self;
+        }
+
+        const auto&
+        BinaryInputBase::forward_data_to(this const auto& self, io::SerialOStream& to, size_t uByteCount) {
+            while (uByteCount != 0) {
+                std::optional<std::byte>
+                    optc = self.stream().Read();
+                if (!optc)
+                    break;
+                to.Write(*optc);
+                uByteCount -= 1;
+            }
+
+            return self;
+        }
+
+        template<std::integral V>
+        const auto&
+        BinaryInputBase::forward_int_to(this const auto& self, io::SerialOStream& to) {
+            V iValue;
+            self.get_int(iValue);
+            SerialBinaryOutput(to)
+                .put_int(iValue);
+            return self;
+        }
+
+        template<std::floating_point V>
+        const auto&
+        BinaryInputBase::forward_float_to(this const auto& self, io::SerialOStream& to) {
+            V fValue;
+            self.get_float(fValue);
+            SerialBinaryOutput(to)
+                .put_float(fValue);
             return self;
         }
     }
