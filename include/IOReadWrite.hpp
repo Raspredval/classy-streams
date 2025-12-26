@@ -144,43 +144,43 @@ namespace io {
             }
 
             const auto&
-            export_char(this const auto& self, io::SerialIStream& from);
+            forward_char_from(this const auto& self, io::SerialIStream& from);
 
             const auto&
-            export_int(this const auto& self, io::SerialIStream& from, int base = 10);
+            forward_int_from(this const auto& self, io::SerialIStream& from, int base = 10);
 
             const auto&
-            export_float(this const auto& self, io::SerialIStream& from);
+            forward_float_from(this const auto& self, io::SerialIStream& from);
 
             const auto&
-            export_float_p(this const auto& self, io::SerialIStream& from, int precision);
+            forward_float_from(this const auto& self, io::SerialIStream& from, int precision);
 
             const auto&
-            export_word(this const auto& self, io::SerialIStream& from);
+            forward_word_from(this const auto& self, io::SerialIStream& from);
 
             const auto&
-            export_line(this const auto& self, io::SerialIStream& from);
+            forward_line_from(this const auto& self, io::SerialIStream& from);
 
             const auto&
-            export_all(this const auto& self, io::SerialIStream& from);
+            forward_all_from(this const auto& self, io::SerialIStream& from);
 
             const auto&
-            export_dec(this const auto& self, io::SerialIStream& from) {
+            forward_dec_from(this const auto& self, io::SerialIStream& from) {
                 return self.export_int(from, 10);
             }
 
             const auto&
-            export_hex(this const auto& self, io::SerialIStream& from) {
+            forward_hex_from(this const auto& self, io::SerialIStream& from) {
                 return self.export_int(from, 16);
             }
 
             const auto&
-            export_oct(this const auto& self, io::SerialIStream& from) {
+            forward_oct_from(this const auto& self, io::SerialIStream& from) {
                 return self.export_int(from, 8);
             }
 
             const auto&
-            export_bin(this const auto& self, io::SerialIStream& from) {
+            forward_bin_from(this const auto& self, io::SerialIStream& from) {
                 return self.export_int(from, 2);
             }
         };
@@ -423,43 +423,43 @@ namespace io {
             }
 
             const auto&
-            import_char(this const auto& self, io::SerialOStream& to);
+            forward_char_to(this const auto& self, io::SerialOStream& to);
 
             const auto&
-            import_int(this const auto& self, io::SerialOStream& to, int base = 10);
+            forward_int_to(this const auto& self, io::SerialOStream& to, int base = 10);
 
             const auto&
-            import_float(this const auto& self, io::SerialOStream& to);
+            forward_float_to(this const auto& self, io::SerialOStream& to);
 
             const auto&
-            import_float_p(this const auto& self, io::SerialOStream& to, int precision);
+            forward_float_to(this const auto& self, io::SerialOStream& to, int precision);
 
             const auto&
-            import_word(this const auto& self, io::SerialOStream& to);
+            forward_word_to(this const auto& self, io::SerialOStream& to);
 
             const auto&
-            import_line(this const auto& self, io::SerialOStream& to);
+            forward_line_to(this const auto& self, io::SerialOStream& to);
 
             const auto&
-            import_all(this const auto& self, io::SerialOStream& to);
+            forward_all_to(this const auto& self, io::SerialOStream& to);
 
             const auto&
-            import_dec(this const auto& self, io::SerialOStream& to) {
+            forward_dec_to(this const auto& self, io::SerialOStream& to) {
                 return self.import_int(to, 10);
             }
 
             const auto&
-            import_hex(this const auto& self, io::SerialOStream& to) {
+            forward_hex_to(this const auto& self, io::SerialOStream& to) {
                 return self.import_int(to, 16);
             }
 
             const auto&
-            import_oct(this const auto& self, io::SerialOStream& to) {
+            forward_oct_to(this const auto& self, io::SerialOStream& to) {
                 return self.import_int(to, 8);
             }
 
             const auto&
-            import_bin(this const auto& self, io::SerialOStream& to) {
+            forward_bin_to(this const auto& self, io::SerialOStream& to) {
                 return self.import_int(to, 2);
             }
 
@@ -880,7 +880,7 @@ namespace io {
 
     namespace __impl {
         const auto&
-        TextOutputBase::export_char(this const auto& self, io::SerialIStream& from) {
+        TextOutputBase::forward_char_from(this const auto& self, io::SerialIStream& from) {
             std::optional<std::byte>
                 optc = from.Read();
             if (optc)
@@ -889,7 +889,7 @@ namespace io {
         }
 
         const auto&
-        TextOutputBase::export_int(this const auto& self, io::SerialIStream& from, int base) {
+        TextOutputBase::forward_int_from(this const auto& self, io::SerialIStream& from, int base) {
             intptr_t i;
             io::SerialTextInput(from)
                 .get_int(i, base);
@@ -897,7 +897,7 @@ namespace io {
         }
 
         const auto&
-        TextOutputBase::export_float(this const auto& self, io::SerialIStream& from) {
+        TextOutputBase::forward_float_from(this const auto& self, io::SerialIStream& from) {
             double f;
             io::SerialTextInput(from)
                 .get_float(f);
@@ -905,7 +905,7 @@ namespace io {
         }
 
         const auto&
-        TextOutputBase::export_float_p(this const auto& self, io::SerialIStream& from, int precision) {
+        TextOutputBase::forward_float_from(this const auto& self, io::SerialIStream& from, int precision) {
             double f;
             io::SerialTextInput(from)
                 .get_float(f);
@@ -913,7 +913,7 @@ namespace io {
         }
 
         const auto&
-        TextOutputBase::export_word(this const auto& self, io::SerialIStream& from) {
+        TextOutputBase::forward_word_from(this const auto& self, io::SerialIStream& from) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = from.Read())) {
@@ -935,7 +935,7 @@ namespace io {
         }
 
         const auto&
-        TextOutputBase::export_line(this const auto& self, io::SerialIStream& from) {
+        TextOutputBase::forward_line_from(this const auto& self, io::SerialIStream& from) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = from.Read())) {
@@ -950,7 +950,7 @@ namespace io {
         }
 
         const auto&
-        TextOutputBase::export_all(this const auto& self, io::SerialIStream& from) {
+        TextOutputBase::forward_all_from(this const auto& self, io::SerialIStream& from) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = from.Read())) {
@@ -961,7 +961,7 @@ namespace io {
         }
 
         const auto&
-        TextInputBase::import_char(this const auto& self, io::SerialOStream& to) {
+        TextInputBase::forward_char_to(this const auto& self, io::SerialOStream& to) {
             std::optional<std::byte>
                 optc = self.stream().Read();
             if (optc)
@@ -970,7 +970,7 @@ namespace io {
         }
 
         const auto&
-        TextInputBase::import_word(this const auto& self, io::SerialOStream& to) {
+        TextInputBase::forward_word_to(this const auto& self, io::SerialOStream& to) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = self.stream().Read())) {
@@ -992,7 +992,7 @@ namespace io {
         }
 
         const auto&
-        TextInputBase::import_line(this const auto& self, io::SerialOStream& to) {
+        TextInputBase::forward_line_to(this const auto& self, io::SerialOStream& to) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = self.stream().Read())) {
@@ -1007,7 +1007,7 @@ namespace io {
         }
 
         const auto&
-        TextInputBase::import_all(this const auto& self, io::SerialOStream& to) {
+        TextInputBase::forward_all_to(this const auto& self, io::SerialOStream& to) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = self.stream().Read())) {
@@ -1018,7 +1018,7 @@ namespace io {
         }
 
         const auto&
-        TextInputBase::import_int(this const auto& self, io::SerialOStream& to, int base) {
+        TextInputBase::forward_int_to(this const auto& self, io::SerialOStream& to, int base) {
             intptr_t iValue;
             self.get_int(iValue, base);
             io::SerialTextOutput
@@ -1028,7 +1028,7 @@ namespace io {
         }
 
         const auto&
-        TextInputBase::import_float(this const auto& self, io::SerialOStream& to) {
+        TextInputBase::forward_float_to(this const auto& self, io::SerialOStream& to) {
             double fValue;
             self.get_float(fValue);
             io::SerialTextOutput
@@ -1038,7 +1038,7 @@ namespace io {
         }
 
         const auto&
-        TextInputBase::import_float_p(this const auto& self, io::SerialOStream& to, int precision) {
+        TextInputBase::forward_float_to(this const auto& self, io::SerialOStream& to, int precision) {
             double fValue;
             self.get_float(fValue);
             io::SerialTextOutput
