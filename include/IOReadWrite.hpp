@@ -34,13 +34,18 @@ namespace io {
             const auto&
             put_int(this const auto& self, I val, int base = 10) {
                 char
-                    lpcTemp[32] = {0};
+                    lpcTemp[32];
 
-                std::to_chars(
-                    std::begin(lpcTemp),
-                    std::end(lpcTemp),
-                    val, base);
-                return self.put_str(lpcTemp);
+                std::to_chars_result
+                    result  = std::to_chars(
+                                std::begin(lpcTemp),
+                                std::end(lpcTemp),
+                                val, base);
+                *result.ptr = '\0'; 
+                
+                std::string_view
+                    strvInt     = ((bool)result.ec) ? lpcTemp : "errint";
+                return self.put_str(strvInt);
             }
 
             template<std::integral I>
@@ -71,31 +76,39 @@ namespace io {
             const auto&
             put_float(this auto& self, F val) {
                 char
-                    lpcTemp[32] = {0};
+                    lpcTemp[32];
                 
-                std::errc
-                    err = std::to_chars(
-                            std::begin(lpcTemp), std::end(lpcTemp),
-                            val,
-                            std::chars_format::fixed).ec;
-                return self.put_str((err != std::errc{})
-                    ? "NaN" : lpcTemp);
+                std::to_chars_result
+                    result  = std::to_chars(
+                                std::begin(lpcTemp),
+                                std::end(lpcTemp),
+                                val,
+                                std::chars_format::fixed);
+                *result.ptr = '\0';
+
+                std::string_view
+                    strvFloat   = ((bool)result.ec) ? lpcTemp : "errfloat";
+                return self.put_str(strvFloat);
             }
 
             template<std::floating_point F>
             const auto&
-            put_float(this const auto& self, F val, int precision) {
+            put_float_p(this auto& self, F val, int precision) {
                 char
-                    lpcTemp[32] = {0};
+                    lpcTemp[32];
                 
-                std::errc
-                    err = std::to_chars(
-                            std::begin(lpcTemp), std::end(lpcTemp),
-                            val,
-                            std::chars_format::fixed,
-                            precision).ec;
-                return self.put_str((err != std::errc{})
-                    ? "NaN" : lpcTemp);
+                std::to_chars_result
+                    result  = std::to_chars(
+                                std::begin(lpcTemp),
+                                std::end(lpcTemp),
+                                val,
+                                std::chars_format::fixed,
+                                precision);
+                *result.ptr = '\0';
+
+                std::string_view
+                    strvFloat   = ((bool)result.ec) ? lpcTemp : "errfloat";
+                return self.put_str(strvFloat);
             }
 
             template<typename... Args>
@@ -108,7 +121,7 @@ namespace io {
                                 lpcBuffer, sizeof(lpcBuffer),
                                 strfmt, std::forward<Args>(args)...);
 
-                return self.put_str(std::string_view(lpcBuffer, (size_t)result.size));
+                return self.put_str({lpcBuffer, (size_t)result.size});
             }
 
             template<typename V> requires
@@ -121,7 +134,7 @@ namespace io {
                 if constexpr (std::same_as<V, char>)
                     return self.put_char(val);
                 else if constexpr (std::constructible_from<std::string_view, V>)
-                    return self.put_str({val});
+                    return self.put_str(val);
                 else if constexpr (std::integral<V>)
                     return self.put_int(val);
                 else if constexpr (std::floating_point<V>)
@@ -131,20 +144,44 @@ namespace io {
             }
 
             const auto&
-            forward_from(this const auto& self, io::SerialIStream& from, size_t uCount = SIZE_MAX) {
-                auto&
-                    to      = self.stream();
+            export_char(this const auto& self, io::SerialIStream& from);
 
-                while (uCount > 0) {
-                    auto
-                        optc    = from.Read();
-                    if (!optc)
-                        break;
-                    to.Write(*optc);
-                    uCount      -= 1;
-                }
+            const auto&
+            export_int(this const auto& self, io::SerialIStream& from, int base = 10);
 
-                return self;
+            const auto&
+            export_float(this const auto& self, io::SerialIStream& from);
+
+            const auto&
+            export_float_p(this const auto& self, io::SerialIStream& from, int precision);
+
+            const auto&
+            export_word(this const auto& self, io::SerialIStream& from);
+
+            const auto&
+            export_line(this const auto& self, io::SerialIStream& from);
+
+            const auto&
+            export_all(this const auto& self, io::SerialIStream& from);
+
+            const auto&
+            export_dec(this const auto& self, io::SerialIStream& from) {
+                return self.export_int(from, 10);
+            }
+
+            const auto&
+            export_hex(this const auto& self, io::SerialIStream& from) {
+                return self.export_int(from, 16);
+            }
+
+            const auto&
+            export_oct(this const auto& self, io::SerialIStream& from) {
+                return self.export_int(from, 8);
+            }
+
+            const auto&
+            export_bin(this const auto& self, io::SerialIStream& from) {
+                return self.export_int(from, 2);
             }
         };
 
@@ -161,6 +198,8 @@ namespace io {
 
             const auto&
             get_word(this const auto& self, std::string& out) {
+                std::string
+                    strWord;
                 std::optional<std::byte>
                     optc;
                 while ((bool)(optc = self.stream().Read())) {
@@ -170,15 +209,33 @@ namespace io {
                     }
                 }
                 while ((bool)(optc = self.stream().Read())) {
-                    if (!isspace((int)*optc)) {
-                        out.push_back((char)*optc);
-                    }
-                    else {
+                    if (isspace((int)*optc)) {
                         self.stream().PutBack(*optc);
                         break;
                     }
+
+                    strWord.push_back((char)*optc);
                 }
 
+                out = std::move(strWord);
+                return self;
+            }
+
+            const auto&
+            get_line(this const auto& self, std::string& out) {
+                std::string
+                    strLine;
+                std::optional<std::byte>
+                    optc;
+                while ((bool)(optc = self.stream().Read())) {
+                    if ((char)*optc == '\n') {
+                        break;
+                    }
+                    
+                    strLine += (char)*optc;
+                }
+
+                out = std::move(strLine);
                 return self;
             }
 
@@ -193,20 +250,6 @@ namespace io {
                 }
 
                 out = std::move(strAll);
-                return self;
-            }
-
-            const auto&
-            get_line(this const auto& self, std::string& out) {
-                std::string
-                    strLine;
-                std::optional<std::byte>
-                    optc;
-                while ((bool)(optc = self.stream().Read()) && (char)*optc != '\n') {
-                    strLine += (char)*optc;
-                }
-
-                out = std::move(strLine);
                 return self;
             }
 
@@ -380,20 +423,44 @@ namespace io {
             }
 
             const auto&
-            forward_to(this const auto& self, io::SerialOStream& to, size_t uCount = SIZE_MAX) {
-                auto&
-                    from    = self.stream();
+            import_char(this const auto& self, io::SerialOStream& to);
 
-                while (uCount > 0) {
-                    auto
-                        optc    = from.Read();
-                    if (!optc)
-                        break;
-                    to.Write(*optc);
-                    uCount      -= 1;
-                }
+            const auto&
+            import_int(this const auto& self, io::SerialOStream& to, int base = 10);
 
-                return self;
+            const auto&
+            import_float(this const auto& self, io::SerialOStream& to);
+
+            const auto&
+            import_float_p(this const auto& self, io::SerialOStream& to, int precision);
+
+            const auto&
+            import_word(this const auto& self, io::SerialOStream& to);
+
+            const auto&
+            import_line(this const auto& self, io::SerialOStream& to);
+
+            const auto&
+            import_all(this const auto& self, io::SerialOStream& to);
+
+            const auto&
+            import_dec(this const auto& self, io::SerialOStream& to) {
+                return self.import_int(to, 10);
+            }
+
+            const auto&
+            import_hex(this const auto& self, io::SerialOStream& to) {
+                return self.import_int(to, 16);
+            }
+
+            const auto&
+            import_oct(this const auto& self, io::SerialOStream& to) {
+                return self.import_int(to, 8);
+            }
+
+            const auto&
+            import_bin(this const auto& self, io::SerialOStream& to) {
+                return self.import_int(to, 2);
             }
 
         protected:
@@ -498,23 +565,6 @@ namespace io {
                 else
                     return self;
             }
-
-            const auto&
-            forward_from(this const auto& self, io::SerialIStream& from, size_t uCount = SIZE_MAX) {
-                auto&
-                    to      = self.stream();
-
-                while (uCount > 0) {
-                    auto
-                        optc    = from.Read();
-                    if (!optc)
-                        break;
-                    to.Write(*optc);
-                    uCount      -= 1;
-                }
-
-                return self;
-            }
         };
 
         class BinaryInputBase {
@@ -551,23 +601,6 @@ namespace io {
                     return self.get_float(value);
                 else
                     return self;
-            }
-
-            const auto&
-            forward_to(this const auto& self, io::SerialOStream& to, size_t uCount = SIZE_MAX) {
-                auto&
-                    from    = self.stream();
-
-                while (uCount > 0) {
-                    auto
-                        optc    = from.Read();
-                    if (!optc)
-                        break;
-                    to.Write(*optc);
-                    uCount      -= 1;
-                }
-
-                return self;
             }
         };
         
@@ -844,4 +877,174 @@ namespace io {
         io::IOStream&
             refStream;
     };
+
+    namespace __impl {
+        const auto&
+        TextOutputBase::export_char(this const auto& self, io::SerialIStream& from) {
+            std::optional<std::byte>
+                optc = from.Read();
+            if (optc)
+                self.Write(*optc);
+            return self;
+        }
+
+        const auto&
+        TextOutputBase::export_int(this const auto& self, io::SerialIStream& from, int base) {
+            intptr_t i;
+            io::SerialTextInput(from)
+                .get_int(i, base);
+            return self.put_int(i);
+        }
+
+        const auto&
+        TextOutputBase::export_float(this const auto& self, io::SerialIStream& from) {
+            double f;
+            io::SerialTextInput(from)
+                .get_float(f);
+            return self.put_float(f);
+        }
+
+        const auto&
+        TextOutputBase::export_float_p(this const auto& self, io::SerialIStream& from, int precision) {
+            double f;
+            io::SerialTextInput(from)
+                .get_float(f);
+            return self.put_float_p(f, precision);
+        }
+
+        const auto&
+        TextOutputBase::export_word(this const auto& self, io::SerialIStream& from) {
+            std::optional<std::byte>
+                optc;
+            while ((bool)(optc = from.Read())) {
+                if (!isspace((int)*optc)) {
+                    from.PutBack(*optc);
+                    break;
+                }
+            }
+            while ((bool)(optc = from.Read())) {
+                if (isspace((int)*optc)) {
+                    from.PutBack(*optc);
+                    break;
+                }
+
+                self.stream().Write(*optc);
+            }
+
+            return self;
+        }
+
+        const auto&
+        TextOutputBase::export_line(this const auto& self, io::SerialIStream& from) {
+            std::optional<std::byte>
+                optc;
+            while ((bool)(optc = from.Read())) {
+                if ((char)*optc == '\n') {
+                    break;
+                }
+
+                self.stream().Write(*optc);
+            }
+
+            return self;
+        }
+
+        const auto&
+        TextOutputBase::export_all(this const auto& self, io::SerialIStream& from) {
+            std::optional<std::byte>
+                optc;
+            while ((bool)(optc = from.Read())) {
+                self.stream().Write(*optc);
+            }
+
+            return self;
+        }
+
+        const auto&
+        TextInputBase::import_char(this const auto& self, io::SerialOStream& to) {
+            std::optional<std::byte>
+                optc = self.stream().Read();
+            if (optc)
+                to.Write(*optc);
+            return self;
+        }
+
+        const auto&
+        TextInputBase::import_word(this const auto& self, io::SerialOStream& to) {
+            std::optional<std::byte>
+                optc;
+            while ((bool)(optc = self.stream().Read())) {
+                if (!isspace((int)*optc)) {
+                    self.stream().PutBack(*optc);
+                    break;
+                }
+            }
+            while ((bool)(optc = self.stream().Read())) {
+                if (isspace((int)*optc)) {
+                    self.stream().PutBack(*optc);
+                    break;
+                }
+
+                to.Write(*optc);
+            }
+
+            return self;
+        }
+
+        const auto&
+        TextInputBase::import_line(this const auto& self, io::SerialOStream& to) {
+            std::optional<std::byte>
+                optc;
+            while ((bool)(optc = self.stream().Read())) {
+                if ((char)*optc == '\n') {
+                    break;
+                }
+
+                to.Write(*optc);
+            }
+
+            return self;
+        }
+
+        const auto&
+        TextInputBase::import_all(this const auto& self, io::SerialOStream& to) {
+            std::optional<std::byte>
+                optc;
+            while ((bool)(optc = self.stream().Read())) {
+                to.Write(*optc);
+            }
+
+            return self;
+        }
+
+        const auto&
+        TextInputBase::import_int(this const auto& self, io::SerialOStream& to, int base) {
+            intptr_t iValue;
+            self.get_int(iValue, base);
+            io::SerialTextOutput
+                out(to);
+            out.put_int(iValue);
+            return self;
+        }
+
+        const auto&
+        TextInputBase::import_float(this const auto& self, io::SerialOStream& to) {
+            double fValue;
+            self.get_float(fValue);
+            io::SerialTextOutput
+                out(to);
+            out.put_float(fValue);
+            return self;
+        }
+
+        const auto&
+        TextInputBase::import_float_p(this const auto& self, io::SerialOStream& to, int precision) {
+            double fValue;
+            self.get_float(fValue);
+            io::SerialTextOutput
+                out(to);
+            out.put_float_p(fValue, precision);
+            return self;
+        }
+    }
 }
