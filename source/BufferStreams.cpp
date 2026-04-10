@@ -42,7 +42,7 @@ namespace io {
         case StreamOffsetOrigin::CurrentPos:
             offset  += this->iCurPos;
             break;
-        
+
         case StreamOffsetOrigin::StreamStart:
             offset  += 0;
             break;
@@ -123,7 +123,7 @@ namespace io {
         this->iCurPos   += 1;
 
         this->retbuf_size = 0;
-        this->ClearFlags();  
+        this->ClearFlags();
         return true;
     }
 
