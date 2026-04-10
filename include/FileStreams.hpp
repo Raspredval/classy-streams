@@ -2,8 +2,6 @@ static_assert(__cplusplus >= 202302, "requires C++23 minimum version");
 
 #pragma once
 #include <cstdio>
-#include <format>
-#include <stdexcept>
 #include <string_view>
 
 #include "IOStreams.hpp"
@@ -14,71 +12,38 @@ namespace io {
         class SerialFileStreamViewBase :
             virtual public  StreamState {
         public:
-            SerialFileStreamViewBase(FILE* handle) :
-                handle(handle) {}
+            SerialFileStreamViewBase(FILE* handle);
 
             [[nodiscard]] bool
-            EndOfStream() const noexcept override {
-                return feof(this->handle);
-            }
+            EndOfStream() const noexcept override;
 
             [[nodiscard]] bool
-            Good() const noexcept override {
-                return !ferror(this->handle);
-            }
+            Good() const noexcept override;
 
             void
-            ClearFlags() noexcept override {
-                return clearerr(this->handle);
-            }
+            ClearFlags() noexcept override;
 
             [[nodiscard]] FILE*
-            Handle() const noexcept {
-                return this->handle;
-            }
+            Handle() const noexcept;
 
             bool
-            Flush() noexcept override {
-                return fflush(this->handle) == 0;
-            }
+            Flush() noexcept override;
 
         protected:
             std::optional<std::byte>
-            Read() {
-                auto c =
-                    fgetc(this->handle);
-                return (c != EOF)
-                    ? std::optional{ (std::byte)c }
-                    : std::nullopt;
-            }
+            Read();
 
             size_t
-            ReadSome(std::span<std::byte> buffer) {
-                return fread(
-                    buffer.data(),
-                    1, buffer.size(),
-                    this->handle);
-            }
+            ReadSome(std::span<std::byte> buffer);
 
             bool
-            Write(std::byte c) {
-                auto result =
-                    fputc((int)c, this->handle);
-                return result != EOF;
-            }
+            Write(std::byte c);
 
             size_t
-            WriteSome(std::span<const std::byte> buffer) {
-                return fwrite(
-                    buffer.data(),
-                    1, buffer.size(),
-                    this->handle);
-            }
+            WriteSome(std::span<const std::byte> buffer);
 
             bool
-            PutBack(std::byte c) {
-                return ungetc((int)c, this->handle) != EOF;
-            }
+            PutBack(std::byte c);
 
             FILE*
                 handle = nullptr;
@@ -88,61 +53,29 @@ namespace io {
             virtual public StreamPosition,
             public SerialFileStreamViewBase {
         public:
-            FileStreamViewBase(FILE* hFile) :
-                SerialFileStreamViewBase(hFile) {}
+            FileStreamViewBase(FILE* handle);
 
             [[nodiscard]] intptr_t
-            GetPosition() const noexcept override {
-                return ftell(this->handle);
-            }
+            GetPosition() const noexcept override;
 
             bool
-            SetPosition(
-                intptr_t             offset,
-                StreamOffsetOrigin  from = StreamOffsetOrigin::StreamStart) override
-            {
-                return !fseek(
-                    this->handle,
-                    offset,
-                    (int)from);
-            }
+            SetPosition(intptr_t offset, StreamOffsetOrigin from = StreamOffsetOrigin::StreamStart) override;
         };
 
         class SerialFileStreamBase :
             public SerialFileStreamViewBase {
         public:
             SerialFileStreamBase(const SerialFileStreamBase&) = delete;
-            SerialFileStreamBase(SerialFileStreamBase&& obj) noexcept :
-                SerialFileStreamViewBase(obj.handle)
-            {
-                obj.handle      = nullptr;
-            }
+            SerialFileStreamBase(SerialFileStreamBase&& obj) noexcept;
 
             SerialFileStreamBase&
             operator=(const SerialFileStreamBase&) = delete;
             SerialFileStreamBase&
-            operator=(SerialFileStreamBase&& obj) noexcept {
-                SerialFileStreamBase
-                    temp    = std::move(obj);
-                std::swap(
-                    this->handle, temp.handle);
-                return *this;
-            }
+            operator=(SerialFileStreamBase&& obj) noexcept;
 
-            SerialFileStreamBase(std::string_view strvFilename, std::string_view strvMode) :
-                SerialFileStreamViewBase(fopen(strvFilename.data(), strvMode.data()))
-            {
-                if (this->handle == nullptr) {
-                    throw std::runtime_error(std::format(
-                        "failed to open file {} with mode {}",
-                        strvFilename, strvMode));
-                }
-            }
+            SerialFileStreamBase(std::string_view strvFilename, std::string_view strvMode);
 
-            ~SerialFileStreamBase() noexcept {
-                if (this->handle != nullptr)
-                    fclose(this->handle);
-            }
+            ~SerialFileStreamBase() noexcept;
         };
 
 
@@ -150,37 +83,16 @@ namespace io {
             public FileStreamViewBase {
         public:
             FileStreamBase(const FileStreamBase&) = delete;
-            FileStreamBase(FileStreamBase&& obj) noexcept :
-                FileStreamViewBase(obj.handle)
-            {
-                obj.handle      = nullptr;
-            }
+            FileStreamBase(FileStreamBase&& obj) noexcept;
 
             FileStreamBase&
             operator=(const FileStreamBase&) = delete;
             FileStreamBase&
-            operator=(FileStreamBase&& obj) noexcept {
-                FileStreamBase
-                    temp    = std::move(obj);
-                std::swap(
-                    this->handle, temp.handle);
-                return *this;
-            }
+            operator=(FileStreamBase&& obj) noexcept;
 
-            FileStreamBase(std::string_view strvFilename, std::string_view strvMode) :
-                FileStreamViewBase(fopen(strvFilename.data(), strvMode.data()))
-            {
-                if (this->handle == nullptr) {
-                    throw std::runtime_error(std::format(
-                        "failed to open file {} with mode {}",
-                        strvFilename, strvMode));
-                }
-            }
+            FileStreamBase(std::string_view strvFilename, std::string_view strvMode);
 
-            ~FileStreamBase() noexcept {
-                if (this->handle != nullptr)
-                    fclose(this->handle);
-            }
+            ~FileStreamBase() noexcept;
         };
     }
 
@@ -188,296 +100,204 @@ namespace io {
         public  IStream,
         public  __impl::FileStreamViewBase {
     public:
-        IFileStreamView(FILE* handle) :
-            FileStreamViewBase(handle) {}
+        IFileStreamView(FILE* handle);
         
         std::optional<std::byte>
-        Read() override {
-            return this->FileStreamViewBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->FileStreamViewBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->FileStreamViewBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 
     class OFileStreamView :
         public  OStream,
         public  __impl::FileStreamViewBase {
     public:
-        OFileStreamView(FILE* handle) :
-            FileStreamViewBase(handle) {}
+        OFileStreamView(FILE* handle);
         
         bool
-        Write(std::byte c) override {
-            return this->FileStreamViewBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->FileStreamViewBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class IOFileStreamView :
         public  IOStream,
         public  __impl::FileStreamViewBase {
     public:
-        IOFileStreamView(FILE* handle) :
-            FileStreamViewBase(handle) {}
+        IOFileStreamView(FILE* handle);
 
         std::optional<std::byte>
-        Read() override {
-            return this->FileStreamViewBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->FileStreamViewBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->FileStreamViewBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
 
         bool
-        Write(std::byte c) override {
-            return this->FileStreamViewBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->FileStreamViewBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class IFileStream :
         public  IStream,
         public  __impl::FileStreamBase {
     public:
-        IFileStream(std::string_view strvFilename) :
-            FileStreamBase(strvFilename, "r") {}
+        IFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
 
         std::optional<std::byte>
-        Read() override {
-            return this->FileStreamBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->FileStreamBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->FileStreamBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 
     class OFileStream :
         public  OStream,
         public  __impl::FileStreamBase {
     public:
-        OFileStream(std::string_view strvFilename) :
-            FileStreamBase(strvFilename, "w") {}
+        OFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
 
         bool
-        Write(std::byte c) override {
-            return this->FileStreamBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->FileStreamBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class IOFileStream :
         public  IOStream,
         public  __impl::FileStreamBase {
     public:
-        IOFileStream(std::string_view strvFilename) :
-            FileStreamBase(strvFilename, "r+") {}
+        IOFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
 
         bool
-        Write(std::byte c) override {
-            return this->FileStreamBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->FileStreamBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
 
         std::optional<std::byte>
-        Read() override {
-            return this->FileStreamBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->FileStreamBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->FileStreamBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 
     class SerialIFileStreamView :
         public  SerialIStream,
         public  __impl::SerialFileStreamViewBase {
     public:
-        SerialIFileStreamView(FILE* handle) :
-            SerialFileStreamViewBase(handle) {}
+        SerialIFileStreamView(FILE* handle);
         
         std::optional<std::byte>
-        Read() override {
-            return this->SerialFileStreamViewBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->SerialFileStreamViewBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->SerialFileStreamViewBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 
     class SerialOFileStreamView :
         public  SerialOStream,
         public  __impl::SerialFileStreamViewBase {
     public:
-        SerialOFileStreamView(FILE* handle) :
-            SerialFileStreamViewBase(handle) {}
+        SerialOFileStreamView(FILE* handle);
         
         bool
-        Write(std::byte c) override {
-            return this->SerialFileStreamViewBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->SerialFileStreamViewBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class SerialIOFileStreamView :
         public  SerialIOStream,
         public  __impl::SerialFileStreamViewBase {
     public:
-        SerialIOFileStreamView(FILE* handle) :
-            SerialFileStreamViewBase(handle) {}
+        SerialIOFileStreamView(FILE* handle);
 
         std::optional<std::byte>
-        Read() override {
-            return this->SerialFileStreamViewBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->SerialFileStreamViewBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->SerialFileStreamViewBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
 
         bool
-        Write(std::byte c) override {
-            return this->SerialFileStreamViewBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->SerialFileStreamViewBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class SerialIFileStream :
         public  SerialIStream,
         public  __impl::SerialFileStreamBase {
     public:
-        SerialIFileStream(std::string_view strvFilename) :
-            SerialFileStreamBase(strvFilename, "r") {}
+        SerialIFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
 
         std::optional<std::byte>
-        Read() override {
-            return this->SerialFileStreamBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->SerialFileStreamBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->SerialFileStreamBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 
     class SerialOFileStream :
         public  SerialOStream,
         public  __impl::SerialFileStreamBase {
     public:
-        SerialOFileStream(std::string_view strvFilename) :
-            SerialFileStreamBase(strvFilename, "w") {}
+        SerialOFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
 
         bool
-        Write(std::byte c) override {
-            return this->SerialFileStreamBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->SerialFileStreamBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class SerialIOFileStream :
         public  SerialIOStream,
         public  __impl::SerialFileStreamBase {
     public:
-        SerialIOFileStream(std::string_view strvFilename) :
-            SerialFileStreamBase(strvFilename, "r+") {}
+        SerialIOFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
 
         bool
-        Write(std::byte c) override {
-            return this->SerialFileStreamBase::Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->SerialFileStreamBase::WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
 
         std::optional<std::byte>
-        Read() override {
-            return this->SerialFileStreamBase::Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->SerialFileStreamBase::ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->SerialFileStreamBase::PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 }
 
