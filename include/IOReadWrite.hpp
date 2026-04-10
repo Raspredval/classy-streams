@@ -10,30 +10,8 @@ static_assert(__cplusplus >= 202302, "requires C++23 minimum version");
 
 namespace io {
     namespace __impl {
-        class buffer {
-            friend class TextInputBase;
-            friend class TextOutputBase;
-        public:
-            buffer() :
-                data(nullptr),
-                size(0) {}
-            
-            ~buffer() {
-                if (this->data)
-                    free(this->data);
-            }
-
-        private:
-            void realloc(size_t uSize) {
-                if (this->size < uSize) {
-                    this->data  = (char*)::realloc((void*)this->data, uSize);
-                    this->size  = uSize;
-                }
-            }
-    
-            char*   data;
-            size_t  size;
-        } inline g_buffer;
+        extern std::span<char>
+        get_io_buffer(size_t uRequestedSize);
 
         class TextOutputBase {
         public:
@@ -71,62 +49,67 @@ namespace io {
             template<std::integral I>
             const auto&
             putd(this const auto& self, I val) {
-                g_buffer.realloc(std::formatted_size("{:d}", val));
+                std::span<char>
+                    spnBuffer   = get_io_buffer(std::formatted_size("{:d}", val));
                 auto result = std::format_to_n(
-                                g_buffer.data, (ptrdiff_t)g_buffer.size,
+                                spnBuffer.data(), (ptrdiff_t)spnBuffer.size(),
                                 "{:d}", val);
-                return self.puts({(const char*)g_buffer.data, (size_t)result.size});
+                return self.puts({(const char*)spnBuffer.data(), (size_t)result.size});
             }
 
             template<std::integral I>
             const auto&
             putx(this const auto& self, I val) {
-                g_buffer.realloc(std::formatted_size("{:x}", val));
+                std::span<char>
+                    spnBuffer   = get_io_buffer(std::formatted_size("{:x}", val));
                 auto result = std::format_to_n(
-                                g_buffer.data, (ptrdiff_t)g_buffer.size,
+                                spnBuffer.data(), (ptrdiff_t)spnBuffer.size(),
                                 "{:x}", val);
-                return self.puts({(const char*)g_buffer.data, (size_t)result.size});
+                return self.puts({(const char*)spnBuffer.data(), (size_t)result.size});
             }
 
             template<std::integral I>
             const auto&
             puto(this const auto& self, I val) {
-                g_buffer.realloc(std::formatted_size("{:o}", val));
+                std::span<char>
+                    spnBuffer   = get_io_buffer(std::formatted_size("{:o}", val));
                 auto result = std::format_to_n(
-                                g_buffer.data, (ptrdiff_t)g_buffer.size,
+                                spnBuffer.data(), (ptrdiff_t)spnBuffer.size(),
                                 "{:o}", val);
-                return self.puts({(const char*)g_buffer.data, (size_t)result.size});
+                return self.puts({(const char*)spnBuffer.data(), (size_t)result.size});
             }
 
             template<std::integral I>
             const auto&
             putb(this const auto& self, I val) {
-                g_buffer.realloc(std::formatted_size("{:d}", val));
+                std::span<char>
+                    spnBuffer   = get_io_buffer(std::formatted_size("{:b}", val));
                 auto result = std::format_to_n(
-                                g_buffer.data, (ptrdiff_t)g_buffer.size,
+                                spnBuffer.data(), (ptrdiff_t)spnBuffer.size(),
                                 "{:b}", val);
-                return self.puts({(const char*)g_buffer.data, (size_t)result.size});
+                return self.puts({(const char*)spnBuffer.data(), (size_t)result.size});
             }
 
             template<std::floating_point F>
             const auto&
             putf(this const auto& self, F val) {
-                g_buffer.realloc(std::formatted_size("{:f}", val));
+                std::span<char>
+                    spnBuffer   = get_io_buffer(std::formatted_size("{:f}", val));
                 auto result = std::format_to_n(
-                                g_buffer.data, (ptrdiff_t)g_buffer.size,
+                                spnBuffer.data(), (ptrdiff_t)spnBuffer.size(),
                                 "{:f}", val);
-                return self.puts({(const char*)g_buffer.data, (size_t)result.size});
+                return self.puts({(const char*)spnBuffer.data(), (size_t)result.size});
             }
 
             template<typename... Args>
             const auto&
-            fmt(this const auto& self, const std::format_string<Args...>& strfmt, Args&&... args) {
-                g_buffer.realloc(std::formatted_size(strfmt, std::forward<Args>(args)...));
+            fmt(this const auto& self, const std::format_string<Args...>& strfmt, const Args&... args) {
+                std::span<char>
+                    spnBuffer   = get_io_buffer(std::formatted_size(strfmt, args...));
                 auto result = std::format_to_n(
-                                g_buffer.data, (ptrdiff_t)g_buffer.size,
-                                strfmt, std::forward<Args>(args)...);
-
-                return self.puts({(const char*)g_buffer.data, (size_t)result.size});
+                                spnBuffer.data(), (ptrdiff_t)spnBuffer.size(),
+                                strfmt, args...);
+                return self.puts({(const char*)spnBuffer.data(), (size_t)result.size});
             }
 
             template<typename V> requires
@@ -152,21 +135,25 @@ namespace io {
             importc(this const auto& self, io::SerialIStream& from);
 
             const auto&
-            inporti(this const auto& self, io::SerialIStream& from) {
-                return self.importd(from);
-            }
-
-            const auto&
             importf(this const auto& self, io::SerialIStream& from);
 
             const auto&
-            importwr(this const auto& self, io::SerialIStream& from);
+            importwr(this const auto& self, io::SerialIStream& from) {
+                TextOutputBase::importword_impl(from, self.stream());
+                return self;
+            }
 
             const auto&
-            importln(this const auto& self, io::SerialIStream& from);
+            importln(this const auto& self, io::SerialIStream& from) {
+                TextOutputBase::importline_impl(from, self.stream());
+                return self;
+            }
 
             const auto&
-            import_all(this const auto& self, io::SerialIStream& from);
+            importall(this const auto& self, io::SerialIStream& from) {
+                TextOutputBase::importall_impl(from, self.stream());
+                return self;
+            }
 
             const auto&
             importd(this const auto& self, io::SerialIStream& from);
@@ -179,6 +166,21 @@ namespace io {
 
             const auto&
             importb(this const auto& self, io::SerialIStream& from);
+
+            const auto&
+            importi(this const auto& self, io::SerialIStream& from) {
+                return self.importd(from);
+            }
+
+        protected:
+            static void
+            importword_impl(io::SerialIStream& from, io::SerialOStream& to);
+
+            static void
+            importline_impl(io::SerialIStream& from, io::SerialOStream& to);
+
+            static void
+            importall_impl(io::SerialIStream& from, io::SerialOStream& to);
         };
 
         class TextInputBase {
@@ -194,58 +196,19 @@ namespace io {
 
             const auto&
             getwr(this const auto& self, std::string& out) {
-                std::string
-                    strWord;
-                std::optional<std::byte>
-                    optc;
-                while ((bool)(optc = self.stream().Read())) {
-                    if (!isspace((int)*optc)) {
-                        self.stream().PutBack(*optc);
-                        break;
-                    }
-                }
-                while ((bool)(optc = self.stream().Read())) {
-                    if (isspace((int)*optc)) {
-                        self.stream().PutBack(*optc);
-                        break;
-                    }
-
-                    strWord.push_back((char)*optc);
-                }
-
-                out = std::move(strWord);
+                out = TextInputBase::getword_impl(self.stream());
                 return self;
             }
 
             const auto&
             getln(this const auto& self, std::string& out) {
-                std::string
-                    strLine;
-                std::optional<std::byte>
-                    optc;
-                while ((bool)(optc = self.stream().Read())) {
-                    if ((char)*optc == '\n') {
-                        break;
-                    }
-                    
-                    strLine += (char)*optc;
-                }
-
-                out = std::move(strLine);
+                out = TextInputBase::getline_impl(self.stream());
                 return self;
             }
 
             const auto&
-            get_all(this const auto& self, std::string& out) {
-                std::string
-                    strAll;
-                std::optional<std::byte>
-                    optc;
-                while ((bool)(optc = self.stream().Read())) {
-                    strAll += (char)*optc;
-                }
-
-                out = std::move(strAll);
+            getall(this const auto& self, std::string& out) {
+                out = TextInputBase::getall_impl(self.stream());
                 return self;
             }
 
@@ -259,41 +222,45 @@ namespace io {
 
             const auto&
             getd(this const auto& self, std::integral auto& out) {
-                return self.get_int_impl(
-                    out, 10,
+                out = self.getint_impl(
+                    self.stream(), 10,
                     [](char c) -> bool {
                         return c >= '0' && c <= '9';
                     });
+                return self;
             }
 
             const auto&
             getx(this const auto& self, std::integral auto& out) {
-                return self.get_int_impl(
-                    out, 16,
+                out = self.getint_impl(
+                    self.stream(), 16,
                     [](char c) -> bool {
                         return
                             (c >= '0' && c <= '9') ||
                             (c >= 'a' && c <= 'f') ||
                             (c >= 'A' && c <= 'F');
                     });
+                return self;
             }
 
             const auto&
             geto(this const auto& self, std::integral auto& out) {
-                return self.get_int_impl(
-                    out, 8,
+                out = self.getint_impl(
+                    self.stream(), 8,
                     [](char c) -> bool {
                         return c >= '0' && c <= '7';
                     });
+                return self;
             }
 
             const auto&
             getb(this const auto& self, std::integral auto& out) {
-                return self.get_int_impl(
-                    out, 2,
+                out = self.getint_impl(
+                    self.stream(), 2,
                     [](char c) -> bool {
                         return c >= '0' && c <= '1';
                     });
+                return self;
             }
 
             const auto&
@@ -303,91 +270,7 @@ namespace io {
 
             const auto&
             getf(this const auto& self, std::floating_point auto& out) {
-                size_t
-                    uSize = 0;
-                std::optional<std::byte>
-                    optc;
-                g_buffer.realloc(32);
-
-            ParseSpacing:
-                if ((bool)(optc = self.stream().Read())) {
-                    if (!isspace((int)*optc)) {
-                        self.stream().PutBack(*optc);
-                        goto ParseFirstChar;
-                    }
-                    else
-                        goto ParseSpacing;
-                }
-                else
-                    return self;
-
-            ParseFirstChar:
-                if ((bool)(optc = self.stream().Read())) {
-                    char c = (char)*optc;
-                    
-                    if (c == '-' || c == '+' || isdigit(c)) {
-                        g_buffer.data[uSize] = c;
-                        uSize += 1;
-                        goto ParseNaturalPart;
-                    }
-                    else if (c == '.' || c == ',') {
-                        g_buffer.data[uSize] = '.';
-                        uSize += 1;
-                        goto ParseFractionalPart;
-                    }
-                    else {
-                        self.stream().PutBack(*optc);
-                        return self;
-                    }
-                }
-                else
-                    return self;
-
-            ParseNaturalPart:
-                if (uSize == g_buffer.size)
-                    goto GenerateValue;
-                if ((bool)(optc = self.stream().Read())) {
-                    char c = (char)*optc;
-                    if (isdigit(c)) {
-                        g_buffer.data[uSize] = c;
-                        uSize += 1;
-                        goto ParseNaturalPart;
-                    }
-                    else if (c == '.' || c == ',') {
-                        g_buffer.data[uSize] = '.';
-                        uSize += 1;
-                        goto ParseFractionalPart;
-                    }
-                    else {
-                        self.stream().PutBack(*optc);
-                        goto GenerateValue;
-                    }
-                }
-                else
-                    goto GenerateValue;
-
-            ParseFractionalPart:
-                if (uSize == g_buffer.size)
-                    goto GenerateValue;
-                if ((bool)(optc = self.stream().Read())) {
-                    char c = (char)*optc;
-                    if (isdigit(c)) {
-                        g_buffer.data[uSize] = c;
-                        uSize += 1;
-                        goto ParseFractionalPart;
-                    }
-                    else {
-                        self.stream().PutBack(*optc);
-                        goto GenerateValue;
-                    }
-                }
-                else
-                    goto GenerateValue;
-
-            GenerateValue:
-                std::from_chars(
-                    g_buffer.data, g_buffer.data + uSize,
-                    out, std::chars_format::fixed);
+                out = TextInputBase::getfloat_impl(self.stream());
                 return self;
             }
 
@@ -422,13 +305,21 @@ namespace io {
             exportf(this const auto& self, io::SerialOStream& to);
 
             const auto&
-            exportwr(this const auto& self, io::SerialOStream& to);
+            exportwr(this const auto& self, io::SerialOStream& to) {
+                TextInputBase::exportword_impl(self.stream(), to);
+                return self;
+            }
 
             const auto&
-            exportln(this const auto& self, io::SerialOStream& to);
+            exportln(this const auto& self, io::SerialOStream& to) {
+                TextInputBase::exportline_impl(self.stream(), to);
+                return self;
+            }
 
             const auto&
-            export_all(this const auto& self, io::SerialOStream& to);
+            exportall(this const auto& self, io::SerialOStream& to) {
+                TextInputBase::exportall_impl(self.stream(), to);
+            }
 
             const auto&
             exportd(this const auto& self, io::SerialOStream& to);
@@ -443,73 +334,35 @@ namespace io {
             exportb(this const auto& self, io::SerialOStream& to);
 
         protected:
-            const auto&
-            get_int_impl(this const auto& self, std::integral auto& out, int base, bool(*fnIsDigit)(char)) {
-                size_t
-                    uSize = 0;
-                std::optional<std::byte>
-                    optc;
-                g_buffer.realloc(32);
-                
-            ParseSpacing:
-                if ((bool)(optc = self.stream().Read())) {
-                    if (!isspace((int)*optc)) {
-                        self.stream().PutBack(*optc);
-                        goto ParseFirstChar;
-                    }
-                    else
-                        goto ParseSpacing;
-                }
-                else
-                    return self;
+            static std::string
+            getword_impl(io::SerialIStream& stream);
 
-            ParseFirstChar:
-                if ((bool)(optc = self.stream().Read())) {
-                    char c = (char)*optc;
-                    
-                    if (c == '-' || c == '+' || isdigit(c)) {
-                        g_buffer.data[uSize] = c;
-                        uSize += 1;
-                        goto ParseDigits;
-                    }
-                    else {
-                        self.stream().PutBack(*optc);
-                        return self;
-                    }
-                }
-                else
-                    return self;
+            static std::string
+            getline_impl(io::SerialIStream& stream);
 
-            ParseDigits:
-                if (uSize == g_buffer.size)
-                    goto GenerateValue;
-                if ((bool)(optc = self.stream().Read())) {
-                    char c = (char)*optc;
-                    if (fnIsDigit(c)) {
-                        g_buffer.data[uSize] = c;
-                        uSize += 1;
-                        goto ParseDigits;
-                    }
-                    else {
-                        self.stream().PutBack(*optc);
-                        goto GenerateValue;
-                    }
-                }
-                else
-                    goto GenerateValue;
+            static std::string
+            getall_impl(io::SerialIStream& stream);
 
-            GenerateValue:
-                std::from_chars(
-                    g_buffer.data, g_buffer.data + uSize,
-                    out, base);
-                return self;
-            }
+            static intptr_t
+            getint_impl(io::SerialIStream& stream, int base, bool(*fnIsDigit)(char));
+
+            static double
+            getfloat_impl(io::SerialIStream& stream);
+
+            static void
+            exportword_impl(io::SerialIStream& from, io::SerialIOStream& to);
+
+            static void
+            exportline_impl(io::SerialIStream& from, io::SerialIOStream& to);
+
+            static void
+            exportall_impl(io::SerialIStream& from, io::SerialIOStream& to);
         };
 
         class BinaryOutputBase {
         public:
             const auto&
-            putdt(this const auto& self, std::span<const std::byte> buffer) {
+            putdata(this const auto& self, std::span<const std::byte> buffer) {
                 self.stream().WriteSome(buffer);
                 return self;
             }
@@ -535,7 +388,7 @@ namespace io {
             const auto&
             put(this const auto& self, V val) {
                 if constexpr (std::constructible_from<std::span<const std::byte>, V>)
-                    return self.putdt(val);
+                    return self.putdata(val);
                 else if constexpr (std::integral<V>)
                     return self.puti(val);
                 else if constexpr (std::floating_point<V>)
@@ -545,7 +398,10 @@ namespace io {
             }
 
             const auto&
-            importdt(this const auto& self, io::SerialIStream& from, size_t uByteCount = SIZE_MAX);
+            importdata(this const auto& self, io::SerialIStream& from, size_t uByteCount = SIZE_MAX) {
+                BinaryOutputBase::importdata_impl(from, self.stream(), uByteCount);
+                return self;
+            }
 
             template<std::integral V>
             const auto&
@@ -554,12 +410,16 @@ namespace io {
             template<std::floating_point V>
             const auto&
             importf(this const auto& self, io::SerialIStream& from);
+        
+        protected:
+            static void
+            importdata_impl(io::SerialIStream& from, io::SerialOStream& to, size_t uByteCount);
         };
 
         class BinaryInputBase {
         public:
             const auto&
-            getdt(this const auto& self, std::span<std::byte> buffer) {
+            getdata(this const auto& self, std::span<std::byte> buffer) {
                 self.stream().ReadSome(buffer);
                 return self;
             }
@@ -583,7 +443,7 @@ namespace io {
             const auto&
             get(this const auto& self, V&& value) {
                 if constexpr (std::constructible_from<std::span<std::byte>, V>)
-                    return self.getdt(value);
+                    return self.getdata(value);
                 else if constexpr (std::integral<std::decay_t<V>>)
                     return self.geti(value);
                 else if constexpr (std::floating_point<std::decay_t<V>>)
@@ -593,7 +453,10 @@ namespace io {
             }
 
             const auto&
-            exportdt(this const auto& self, io::SerialOStream& to, size_t uByteCount = SIZE_MAX);
+            exportdata(this const auto& self, io::SerialOStream& to, size_t uByteCount = SIZE_MAX) {
+                BinaryInputBase::exportdata_impl(self.stream(), to, uByteCount);
+                return self;
+            }
 
             template<std::integral V>
             const auto&
@@ -602,6 +465,10 @@ namespace io {
             template<std::floating_point V>
             const auto&
             exportf(this const auto& self, io::SerialOStream& to);
+        
+        protected:
+            static void
+            exportdata_impl(io::SerialIStream& from, io::SerialOStream& to, size_t uByteCount);
         };
         
         class SerialIOBase {
@@ -922,54 +789,6 @@ namespace io {
         }
 
         const auto&
-        TextOutputBase::importwr(this const auto& self, io::SerialIStream& from) {
-            std::optional<std::byte>
-                optc;
-            while ((bool)(optc = from.Read())) {
-                if (!isspace((int)*optc)) {
-                    from.PutBack(*optc);
-                    break;
-                }
-            }
-            while ((bool)(optc = from.Read())) {
-                if (isspace((int)*optc)) {
-                    from.PutBack(*optc);
-                    break;
-                }
-
-                self.stream().Write(*optc);
-            }
-
-            return self;
-        }
-
-        const auto&
-        TextOutputBase::importln(this const auto& self, io::SerialIStream& from) {
-            std::optional<std::byte>
-                optc;
-            while ((bool)(optc = from.Read())) {
-                if ((char)*optc == '\n') {
-                    break;
-                }
-
-                self.stream().Write(*optc);
-            }
-
-            return self;
-        }
-
-        const auto&
-        TextOutputBase::import_all(this const auto& self, io::SerialIStream& from) {
-            std::optional<std::byte>
-                optc;
-            while ((bool)(optc = from.Read())) {
-                self.stream().Write(*optc);
-            }
-
-            return self;
-        }
-
-        const auto&
         TextInputBase::exportc(this const auto& self, io::SerialOStream& to) {
             char c;
             self.getc(c);
@@ -1017,68 +836,6 @@ namespace io {
             return self;
         }
 
-        const auto&
-        TextInputBase::exportwr(this const auto& self, io::SerialOStream& to) {
-            std::optional<std::byte>
-                optc;
-            while ((bool)(optc = self.stream().Read())) {
-                if (!isspace((int)*optc)) {
-                    self.stream().PutBack(*optc);
-                    break;
-                }
-            }
-            while ((bool)(optc = self.stream().Read())) {
-                if (isspace((int)*optc)) {
-                    self.stream().PutBack(*optc);
-                    break;
-                }
-
-                to.Write(*optc);
-            }
-
-            return self;
-        }
-
-        const auto&
-        TextInputBase::exportln(this const auto& self, io::SerialOStream& to) {
-            std::optional<std::byte>
-                optc;
-            while ((bool)(optc = self.stream().Read())) {
-                if ((char)*optc == '\n') {
-                    break;
-                }
-
-                to.Write(*optc);
-            }
-
-            return self;
-        }
-
-        const auto&
-        TextInputBase::export_all(this const auto& self, io::SerialOStream& to) {
-            std::optional<std::byte>
-                optc;
-            while ((bool)(optc = self.stream().Read())) {
-                to.Write(*optc);
-            }
-
-            return self;
-        }
-
-        const auto&
-        BinaryOutputBase::importdt(this const auto& self, io::SerialIStream& from, size_t uByteCount) {
-            while (uByteCount != 0) {
-                std::optional<std::byte>
-                    optc = from.Read();
-                if (!optc)
-                    break;
-                self.stream().Write(*optc);
-                uByteCount -= 1;
-            }
-
-            return self;
-        }
-
         template<std::integral V>
         const auto&
         BinaryOutputBase::importi(this const auto& self, io::SerialIStream& from) {
@@ -1093,20 +850,6 @@ namespace io {
             V fValue;
             SerialBinaryInput(from).getf(fValue);
             return self.putf(fValue);
-        }
-
-        const auto&
-        BinaryInputBase::exportdt(this const auto& self, io::SerialOStream& to, size_t uByteCount) {
-            while (uByteCount != 0) {
-                std::optional<std::byte>
-                    optc = self.stream().Read();
-                if (!optc)
-                    break;
-                to.Write(*optc);
-                uByteCount -= 1;
-            }
-
-            return self;
         }
 
         template<std::integral V>
