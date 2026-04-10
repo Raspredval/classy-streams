@@ -5,18 +5,34 @@ project(classy-streams LANGUAGES CXX VERSION 0.1)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(LIBRARY_HEADERS
+    "include/NetworkStreams.hpp"
+    "include/ConsoleStreams.hpp"
+    "include/BufferStreams.hpp"
+    "include/FileStreams.hpp"
+    "include/IOReadWrite.hpp"
+    "include/IOStreams.hpp")
+set(LIBRARY_SOURCES
+    "source/NetworkStreams.cpp"
+    "source/ConsoleStreams.cpp"
+    "source/BufferStreams.cpp"
+    "source/FileStreams.cpp"
+    "source/IOReadWrite.cpp")
+
 add_library(classy-streams
-    INTERFACE)
-file(GLOB LIBRARY_HEADERS "${CMAKE_SOURCE_DIR}/include/*.hpp")
+    SHARED ${LIBRARY_SOURCES})
 target_include_directories(classy-streams
     INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:${CMAKE_SOURCE_DIR}/include>)
+        "${CMAKE_SOURCE_DIR}/include")
 
 install(
     FILES ${LIBRARY_HEADERS}
     DESTINATION "include/classy-streams"
     COMPONENT classy-streams-headers)
+install(
+    TARGETS classy-streams
+    DESTINATION "lib/"
+    COMPONENT classy-streams-binaries)
 
 include(CPack)
 
@@ -27,6 +43,8 @@ set(CPACK_INSTALL_PREFIX "/usr/local/")
 
 cpack_add_component(classy-streams-headers
     DISPLAY "Header files")
+cpack_add_component(classy-streams-binaries
+    DISPLAY "Binary files")
 
 set(CXX_WARNINGS "-Wall" "-Wextra" "-Wconversion" "-Werror")
 
