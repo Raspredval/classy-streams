@@ -5,15 +5,13 @@ static_assert(__cplusplus >= 202302, "requires C++23 minimum version");
 #include "IOReadWrite.hpp"
 
 namespace io {
-    inline SerialIFileStreamView
-        std_input   = {::stdin};
-    inline SerialOFileStreamView
-        std_output  = {::stdout},
-        std_error   = {::stderr};
+    extern SerialIFileStreamView
+        std_input;
+    extern SerialOFileStreamView
+        std_output, std_error;
 
-    inline SerialTextInput
-        cin(std_input);
-    inline SerialTextOutput
-        cout(std_output),
-        cerr(std_error);
+    extern SerialTextInput
+        cin;
+    extern SerialTextOutput
+        cout, cerr;
 }
