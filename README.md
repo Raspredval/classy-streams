@@ -1,2 +1,2 @@
 # classy-streams
-making it a binary lib instead of a header only lib
+an attempt to 'fix' STL iostreams and expand it's capabilities
