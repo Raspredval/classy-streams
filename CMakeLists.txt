@@ -20,7 +20,7 @@ set(LIBRARY_SOURCES
     "source/IOReadWrite.cpp")
 
 add_library(classy-streams
-    SHARED ${LIBRARY_SOURCES})
+    ${LIBRARY_SOURCES})
 target_include_directories(classy-streams
     INTERFACE
         "${CMAKE_SOURCE_DIR}/include")
