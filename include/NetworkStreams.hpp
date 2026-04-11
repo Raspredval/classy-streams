@@ -7,10 +7,10 @@ static_assert(__cplusplus >= 202302, "requires C++23 minimum version");
 #include <stdexcept>
 #include <optional>
 
-#include <netinet/in.h>                                                                                          
-#include <sys/unistd.h>                                                                                          
-#include <sys/socket.h>                                                                                          
-#include <arpa/inet.h>                                                                                           
+#include <netinet/in.h>
+#include <sys/unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <sys/un.h>
 #include <netdb.h>
 
@@ -23,154 +23,53 @@ namespace io {
 
             BufferedNetworkStream(
                 const BufferedNetworkStream&) = delete;
-            
+
             BufferedNetworkStream(
                 BufferedNetworkStream&&) noexcept = delete;
-            
+
             BufferedNetworkStream&
             operator=(const BufferedNetworkStream&) = delete;
-            
+
             BufferedNetworkStream&
             operator=(BufferedNetworkStream&&) noexcept = delete;
 
-            BufferedNetworkStream(int fdSocket) {
-                if (fdSocket < 0)
-                    throw std::runtime_error("failed to create a socket");
+            BufferedNetworkStream(int fdSocket);
 
-                this->i.lpData      = new std::byte[this->i.uBufCap];
-                this->o.lpData      = new std::byte[this->o.uBufCap];
-                this->s.fdSocket    = fdSocket;
-            }
-
-            ~BufferedNetworkStream() noexcept {
-                this->Flush();
-                shutdown(this->s.fdSocket, SHUT_RD);
-                while (this->GetInput()) {}
-                shutdown(this->s.fdSocket, SHUT_RDWR);
-                close(this->s.fdSocket);
-                delete[] this->i.lpData;
-                delete[] this->o.lpData;
-            }
+            ~BufferedNetworkStream() noexcept;
 
             std::optional<std::byte>
-            Read() noexcept {
-                if (this->s.uRetLen != 0)
-                    return this->s.lpRetBuf[--this->s.uRetLen];
-                
-                if (this->i.uBegin == this->i.uEnd) {
-                    if (!this->GetInput())
-                        return std::nullopt;
-                }
-
-                return this->i.lpData[this->i.uBegin++];
-            }
+            Read() noexcept;
 
             bool
-            Write(std::byte c) noexcept {
-                if (this->o.uSize == this->o.uBufCap) {
-                    if (!this->Flush())
-                        return false;
-                }
-
-                this->o.lpData[this->o.uSize++] = c;
-                return true;
-            }
+            Write(std::byte c) noexcept;
 
             size_t
-            ReadSome(std::span<std::byte> buffer) noexcept {
-                for (size_t i = 0; i != buffer.size(); ++i) {
-                    std::optional<std::byte>
-                        optc    = this->Read();
-                    if (!optc)
-                        return i;
-                }
-
-                return buffer.size();
-            }
+            ReadSome(std::span<std::byte> buffer) noexcept;
 
             size_t
-            WriteSome(std::span<const std::byte> buffer) noexcept {
-                for (size_t i = 0; i != buffer.size(); ++i) {
-                    if (!this->Write(buffer[i]))
-                        return i;
-                }
-
-                return buffer.size();
-            }
+            WriteSome(std::span<const std::byte> buffer) noexcept;
 
             bool
-            PutBack(std::byte c) noexcept {
-                if (this->s.uRetLen == sizeof(this->s.lpRetBuf))
-                    return false;
-
-                this->s.lpRetBuf[this->s.uRetLen++] = c;
-                return true;
-            }
+            PutBack(std::byte c) noexcept;
 
             bool
-            Flush() noexcept {
-                if (this->o.uSize == 0)
-                    return true;
-
-                ssize_t
-                    iOutputSize = send(
-                                    this->s.fdSocket,
-                                    this->o.lpData,
-                                    this->o.uSize,
-                                    0);
-                if (iOutputSize < 0) {
-                    this->s.bErr = true;
-                    return false;
-                }
-
-                this->o.uSize   = 0;
-                return true;
-            }
+            Flush() noexcept;
 
             void
-            ClearFlags() noexcept {
-                this->s.bEOF    = false;
-                this->s.bErr    = false;
-            }
+            ClearFlags() noexcept;
 
             bool
-            EndOfStream() const noexcept {
-                return (bool)this->s.bEOF;
-            }
+            EndOfStream() const noexcept;
 
             bool
-            Error() const noexcept {
-                return (bool)this->s.bEOF;
-            }
+            Error() const noexcept;
 
             int
-            Descriptor() const noexcept {
-                return this->s.fdSocket;
-            }
+            Descriptor() const noexcept;
 
         private:
             bool
-            GetInput() {
-                ssize_t
-                    iInputSize  = recv(
-                                    this->s.fdSocket,
-                                    this->i.lpData,
-                                    this->i.uBufCap,
-                                    0);
-                if (iInputSize < 0) {
-                    this->s.bErr = true;
-                    return false;
-                }
-
-                if (iInputSize == 0) {
-                    this->s.bEOF = true;
-                    return false;
-                }
-
-                this->i.uBegin  = 0;
-                this->i.uEnd    = (size_t)iInputSize;
-                return true;
-            }
+            GetInput();
 
             struct InputBuffer {
                 static constexpr size_t
@@ -190,7 +89,7 @@ namespace io {
                 size_t
                     uSize       = 0;
             } o;
-            
+
             struct State {
                 int
                     fdSocket    = -1;
@@ -207,33 +106,22 @@ namespace io {
             virtual public StreamState {
         public:
             NetworkStreamViewBase() = default;
-            NetworkStreamViewBase(BufferedNetworkStream* hSocket) :
-                hStream(hSocket) {}
+            NetworkStreamViewBase(BufferedNetworkStream* hStream);
 
             [[nodiscard]] bool
-            EndOfStream() const noexcept override {
-                return this->hStream->EndOfStream();
-            }
+            EndOfStream() const noexcept override;
 
             [[nodiscard]] bool
-            Good() const noexcept override {
-                return !this->hStream->Error();
-            }
+            Good() const noexcept override;
 
             bool
-            Flush() noexcept override {
-                return this->hStream->Flush();
-            }
+            Flush() noexcept override;
 
             void
-            ClearFlags() noexcept override {
-                return this->hStream->ClearFlags();
-            }
-        
+            ClearFlags() noexcept override;
+
             BufferedNetworkStream*
-            Handle() const noexcept {
-                return this->hStream;
-            }
+            Handle() const noexcept;
 
         protected:
             BufferedNetworkStream*
@@ -243,33 +131,19 @@ namespace io {
         class NetworkStreamBase :
             public NetworkStreamViewBase {
         public:
-            NetworkStreamBase(int fdSocket) :
-                NetworkStreamViewBase(new BufferedNetworkStream(fdSocket)) {}
+            NetworkStreamBase(int fdSocket);
 
             NetworkStreamBase(const NetworkStreamBase&) = delete;
 
-            NetworkStreamBase(NetworkStreamBase&& obj) noexcept {
-                this->hStream   = obj.hStream;
-                obj.hStream     = nullptr;
-            }
+            NetworkStreamBase(NetworkStreamBase&& obj) noexcept;
 
             NetworkStreamBase&
             operator=(const NetworkStreamBase&) = delete;
 
             NetworkStreamBase&
-            operator=(NetworkStreamBase&& obj) noexcept {
-                NetworkStreamBase
-                    temp    = std::move(obj);
-                std::swap(this->hStream, temp.hStream);
-                return *this;
-            }
+            operator=(NetworkStreamBase&& obj) noexcept;
 
-            ~NetworkStreamBase() noexcept {
-                if (this->hStream != nullptr) {
-                    delete this->hStream;
-                    this->hStream   = nullptr;
-                }
-            }
+            ~NetworkStreamBase() noexcept;
         };
 
         template<typename AddressT, typename StreamViewT> requires
@@ -290,7 +164,7 @@ namespace io {
             Connect(const AddressT& addr) {
                 ConnectionType
                     connection = std::nullopt;
-                
+
                 int
                     fdClient    = this->stream.Handle()->Descriptor();
                 if (addr.Connect(fdClient)) {
@@ -365,7 +239,7 @@ namespace io {
                         StreamT(fdAccept),
                         addrAccept);
                 }
-                
+
                 return connection;
             }
 
@@ -386,156 +260,102 @@ namespace io {
         public SerialIStream,
         public __impl::NetworkStreamViewBase {
     public:
-        INetworkStreamView(__impl::BufferedNetworkStream* hStream) :
-            NetworkStreamViewBase(hStream) {
-                shutdown(this->hStream->Descriptor(), SHUT_WR);
-            }
+        INetworkStreamView(__impl::BufferedNetworkStream* hStream);
 
         std::optional<std::byte>
-        Read() override {
-            return this->hStream->Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->hStream->ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->hStream->PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 
     class ONetworkStreamView :
         public SerialOStream,
         public __impl::NetworkStreamViewBase {
     public:
-        ONetworkStreamView(__impl::BufferedNetworkStream* hStream) :
-            NetworkStreamViewBase(hStream) {
-                shutdown(this->hStream->Descriptor(), SHUT_RD);
-            }
+        ONetworkStreamView(__impl::BufferedNetworkStream* hStream);
 
         bool
-        Write(std::byte c) override {
-            return this->hStream->Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->hStream->WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class IONetworkStreamView :
         public SerialIOStream,
         public __impl::NetworkStreamViewBase {
     public:
-        IONetworkStreamView(__impl::BufferedNetworkStream* hStream) :
-            NetworkStreamViewBase(hStream) {}
-        
+        IONetworkStreamView(__impl::BufferedNetworkStream* hStream);
+
         std::optional<std::byte>
-        Read() override {
-            return this->hStream->Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->hStream->ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->hStream->PutBack(c);
-        }
+        PutBack(std::byte c) override;
 
         bool
-        Write(std::byte c) override {
-            return this->hStream->Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->hStream->WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class INetworkStream :
         public SerialIStream,
         public __impl::NetworkStreamBase {
     public:
-        INetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket) {
-                shutdown(this->hStream->Descriptor(), SHUT_WR);
-            }
+        INetworkStream(int fdSocket);
 
         std::optional<std::byte>
-        Read() override {
-            return this->hStream->Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->hStream->ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->hStream->PutBack(c);
-        }
+        PutBack(std::byte c) override;
     };
 
     class ONetworkStream :
         public SerialOStream,
         public __impl::NetworkStreamBase {
     public:
-        ONetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket) {
-                shutdown(this->hStream->Descriptor(), SHUT_RD);
-            }
+        ONetworkStream(int fdSocket);
 
         bool
-        Write(std::byte c) override {
-            return this->hStream->Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->hStream->WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
     };
 
     class IONetworkStream :
         public SerialIOStream,
         public __impl::NetworkStreamBase {
     public:
-        IONetworkStream(int fdSocket) :
-            NetworkStreamBase(fdSocket) {}
-        
+        IONetworkStream(int fdSocket);
+
         std::optional<std::byte>
-        Read() override {
-            return this->hStream->Read();
-        }
+        Read() override;
 
         size_t
-        ReadSome(std::span<std::byte> buffer) override {
-            return this->hStream->ReadSome(buffer);
-        }
+        ReadSome(std::span<std::byte> buffer) override;
 
         bool
-        PutBack(std::byte c) override {
-            return this->hStream->PutBack(c);
-        }
-
-        bool
-        Write(std::byte c) override {
-            return this->hStream->Write(c);
-        }
+        Write(std::byte c) override;
 
         size_t
-        WriteSome(std::span<const std::byte> buffer) override {
-            return this->hStream->WriteSome(buffer);
-        }
+        WriteSome(std::span<const std::byte> buffer) override;
+
+        bool
+        PutBack(std::byte c) override;
     };
 
     namespace IPv4 {
@@ -547,73 +367,21 @@ namespace io {
 
             Addr() = default;
 
-            Addr(in_addr_t uAddress, in_port_t uPort) :
-                sockaddr_in {
-                    .sin_family = AF_INET,
-                    .sin_port   = htons(uPort),
-                    .sin_addr   = {uAddress},
-                    .sin_zero   = {}
-                } {}
+            Addr(in_addr_t uAddress, in_port_t uPort);
 
             Addr(in_port_t uPort) :
                 Addr(INADDR_ANY, uPort) {}
 
-            Addr(std::string_view strvAddress, std::string_view strvService = {}) {
-                struct addrinfo
-                    hints   = {
-                        .ai_flags       = AI_PASSIVE,
-                        .ai_family      = AF_INET,
-                        .ai_socktype    = SOCK_STREAM,
-                        .ai_protocol    = 0,
-                        .ai_addrlen     = 0,
-                        .ai_addr        = nullptr,
-                        .ai_canonname   = nullptr,
-                        .ai_next        = nullptr
-                    },
-                    *lpResult;
-
-                int
-                    errcode = getaddrinfo(
-                                strvAddress.data(),
-                                strvService.data(),
-                                &hints,
-                                &lpResult);
-                switch (errcode) { // maybe expand later
-                case 0:
-                    break;
-
-                default:
-                    throw std::runtime_error("failed to get the IPv4 address from string");
-                }
-
-                if (lpResult->ai_family != AF_INET || lpResult->ai_addrlen != sizeof(struct sockaddr_in))
-                    throw std::runtime_error("result address family isn't IPv4");
-
-                const struct sockaddr_in*
-                    addr    = (const struct sockaddr_in*)lpResult->ai_addr;
-                this->sin_family    = AF_INET;
-                this->sin_addr      = addr->sin_addr;
-                this->sin_port      = addr->sin_port;
-
-                freeaddrinfo(lpResult);
-            }
+            Addr(std::string_view strvAddress, std::string_view strvService = {});
 
             [[nodiscard]] bool
-            Connect(int fd) const noexcept {
-                return
-                    connect(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
-            }
+            Connect(int fd) const noexcept;
 
             [[nodiscard]] bool
-            Bind(int fd) const noexcept {
-                return
-                    bind(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
-            }
+            Bind(int fd) const noexcept;
 
             std::string_view
-            ToString() {
-                return inet_ntoa(this->sin_addr);
-            }
+            ToString();
         };
 
         using INetworkServer    =
@@ -637,35 +405,16 @@ namespace io {
         {
             static constexpr sa_family_t
                 AddressFamily   = AF_LOCAL;
-            
+
             Addr() = default;
 
-            Addr(std::string_view strvFilepath) :
-                sockaddr_un{ .sun_family = AF_LOCAL, .sun_path = {} }
-            {
-                size_t
-                    uStrLen = std::min(
-                                strvFilepath.size(),
-                                sizeof(this->sun_path) - 1);
-                for (size_t i = 0; i != uStrLen; ++i) {
-                    this->sun_path[i] = strvFilepath[i];
-                }
-                this->sun_path[uStrLen] = '\0';
-            }
+            Addr(std::string_view strvFilepath);
 
             [[nodiscard]] bool
-            Connect(int fd) const noexcept {
-                return
-                    access(this->sun_path, F_OK) == 0 &&
-                    connect(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
-            }
+            Connect(int fd) const noexcept;
 
             [[nodiscard]] bool
-            Bind(int fd) const noexcept {
-                return
-                    unlink(this->sun_path) == 0 &&
-                    bind(fd, (const struct sockaddr*)this, sizeof(Addr)) == 0;
-            }
+            Bind(int fd) const noexcept;
         };
 
         using INetworkServer    =
