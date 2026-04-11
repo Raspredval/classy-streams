@@ -5,6 +5,8 @@ project(classy-streams LANGUAGES CXX VERSION 0.1)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CXX_WARNINGS "-Wall" "-Wextra" "-Wconversion" "-Werror")
+
 set(LIBRARY_HEADERS
     "include/NetworkStreams.hpp"
     "include/ConsoleStreams.hpp"
@@ -19,18 +21,40 @@ set(LIBRARY_SOURCES
     "source/FileStreams.cpp"
     "source/IOReadWrite.cpp")
 
-add_library(classy-streams
-    ${LIBRARY_SOURCES})
-target_include_directories(classy-streams
-    INTERFACE
-        "${CMAKE_SOURCE_DIR}/include")
+add_library(classy-streams-shared
+    SHARED
+        ${LIBRARY_SOURCES})
+set_target_properties(classy-streams-shared
+    PROPERTIES
+        OUTPUT_NAME         "classy-streams"
+        OUTPUT_NAME_DEBUG   "classy-streams-debug")
+target_compile_options(classy-streams-shared
+    PRIVATE
+        ${CXX_WARNINGS})
+target_include_directories(classy-streams-shared
+    PRIVATE
+        "include/")
+
+add_library(classy-streams-static
+    STATIC
+        ${LIBRARY_SOURCES})
+set_target_properties(classy-streams-static
+    PROPERTIES
+        OUTPUT_NAME         "classy-streams"
+        OUTPUT_NAME_DEBUG   "classy-streams-debug")
+target_compile_options(classy-streams-static
+    PRIVATE
+        ${CXX_WARNINGS})
+target_include_directories(classy-streams-static
+    PRIVATE
+        "include/")
 
 install(
     FILES ${LIBRARY_HEADERS}
     DESTINATION "include/classy-streams"
     COMPONENT classy-streams-headers)
 install(
-    TARGETS classy-streams
+    TARGETS classy-streams-shared classy-streams-static
     DESTINATION "lib/"
     COMPONENT classy-streams-binaries)
 
@@ -46,8 +70,6 @@ cpack_add_component(classy-streams-headers
 cpack_add_component(classy-streams-binaries
     DISPLAY "Binary files")
 
-set(CXX_WARNINGS "-Wall" "-Wextra" "-Wconversion" "-Werror")
-
 add_executable(test_client_local
     "tests/test_client_local.cpp")
 target_compile_options(test_client_local
@@ -56,6 +78,8 @@ target_compile_options(test_client_local
 target_include_directories(test_client_local
     PRIVATE
         "include/")
+target_link_libraries(test_client_local
+    classy-streams-shared)
 
 add_executable(test_server_local
     "tests/test_server_local.cpp")
@@ -65,6 +89,8 @@ target_compile_options(test_server_local
 target_include_directories(test_server_local
     PRIVATE
         "include/")
+target_link_libraries(test_server_local
+    classy-streams-shared)
 
 add_executable(test_client_tcp
     "tests/test_client_tcp.cpp")
@@ -74,6 +100,8 @@ target_compile_options(test_client_tcp
 target_include_directories(test_client_tcp
     PRIVATE
         "include/")
+target_link_libraries(test_client_tcp
+    classy-streams-shared)
 
 add_executable(test_server_tcp
     "tests/test_server_tcp.cpp")
@@ -83,6 +111,8 @@ target_compile_options(test_server_tcp
 target_include_directories(test_server_tcp
     PRIVATE
         "include/")
+target_link_libraries(test_server_tcp
+    classy-streams-shared)
 
 add_executable(test_binary_io
     "tests/test_binary_io.cpp")
@@ -92,3 +122,5 @@ target_compile_options(test_binary_io
 target_include_directories(test_binary_io
     PRIVATE
         "include/")
+target_link_libraries(test_binary_io
+    classy-streams-shared)
