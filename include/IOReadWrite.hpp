@@ -103,7 +103,7 @@ namespace io {
 
             template<typename... Args>
             const auto&
-            fmt(this const auto& self, const std::format_string<Args...>& strfmt, const Args&... args) {
+            fmt(this const auto& self, const std::format_string<const Args&...>& strfmt, const Args&... args) {
                 std::span<char>
                     spnBuffer   = get_io_buffer(std::formatted_size(strfmt, args...));
                 auto result = std::format_to_n(
@@ -366,17 +366,17 @@ namespace io {
                 self.stream().WriteSome(buffer);
                 return self;
             }
-            
+
             const auto&
             puti(this const auto& self, std::integral auto value) {
-                return self.putdt({
+                return self.putdata({
                     (const std::byte*)&value, sizeof(value)
                 });
             }
 
             const auto&
             putf(this const auto& self, std::floating_point auto value) {
-                return self.putdt({
+                return self.putdata({
                     (const std::byte*)&value, sizeof(value)
                 });
             }
@@ -410,7 +410,7 @@ namespace io {
             template<std::floating_point V>
             const auto&
             importf(this const auto& self, io::SerialIStream& from);
-        
+
         protected:
             static void
             importdata_impl(io::SerialIStream& from, io::SerialOStream& to, size_t uByteCount);
@@ -426,12 +426,12 @@ namespace io {
 
             const auto&
             geti(this const auto& self, std::integral auto& value) {
-                return self.getdt({ (std::byte*)&value, sizeof(value) });
+                return self.getdata({ (std::byte*)&value, sizeof(value) });
             }
 
             const auto&
             getf(this const auto& self, std::floating_point auto& value) {
-                return self.getdt({ (std::byte*)&value, sizeof(value) });
+                return self.getdata({ (std::byte*)&value, sizeof(value) });
             }
 
             template<typename V> requires
@@ -465,12 +465,12 @@ namespace io {
             template<std::floating_point V>
             const auto&
             exportf(this const auto& self, io::SerialOStream& to);
-        
+
         protected:
             static void
             exportdata_impl(io::SerialIStream& from, io::SerialOStream& to, size_t uByteCount);
         };
-        
+
         class SerialIOBase {
         public:
             const auto&
@@ -518,7 +518,7 @@ namespace io {
         public __impl::TextInputBase {
     public:
         SerialTextInput(const SerialTextInput&) = delete;
-        
+
         SerialTextInput(io::SerialIStream& is) :
             refStream(is) {}
 
@@ -537,7 +537,7 @@ namespace io {
         public __impl::TextOutputBase {
     public:
         SerialTextOutput(const SerialTextOutput&) = delete;
-        
+
         SerialTextOutput(io::SerialOStream& os) :
             refStream(os) {}
 
@@ -565,7 +565,7 @@ namespace io {
         stream() const noexcept {
             return this->refStream;
         }
-    
+
     private:
         io::SerialIOStream&
             refStream;
@@ -576,7 +576,7 @@ namespace io {
         public __impl::TextInputBase {
     public:
         TextInput(const TextInput&) = delete;
-        
+
         TextInput(io::IStream& is) :
             refStream(is) {}
 
@@ -595,7 +595,7 @@ namespace io {
         public __impl::TextOutputBase {
     public:
         TextOutput(const TextOutput&) = delete;
-        
+
         TextOutput(io::OStream& os) :
             refStream(os) {}
 
@@ -623,7 +623,7 @@ namespace io {
         stream() const noexcept {
             return this->refStream;
         }
-    
+
     private:
         io::IOStream&
             refStream;
@@ -634,7 +634,7 @@ namespace io {
         public __impl::BinaryInputBase {
     public:
         SerialBinaryInput(const SerialBinaryInput&) = delete;
-        
+
         SerialBinaryInput(io::SerialIStream& is) :
             refStream(is) {}
 
@@ -653,7 +653,7 @@ namespace io {
         public __impl::BinaryOutputBase {
     public:
         SerialBinaryOutput(const SerialBinaryOutput&) = delete;
-        
+
         SerialBinaryOutput(io::SerialOStream& os) :
             refStream(os) {}
 
@@ -681,7 +681,7 @@ namespace io {
         stream() const noexcept {
             return this->refStream;
         }
-    
+
     private:
         io::SerialIOStream&
             refStream;
@@ -692,7 +692,7 @@ namespace io {
         public __impl::BinaryInputBase {
     public:
         BinaryInput(const BinaryInput&) = delete;
-        
+
         BinaryInput(io::IStream& is) :
             refStream(is) {}
 
@@ -711,7 +711,7 @@ namespace io {
         public __impl::BinaryOutputBase {
     public:
         BinaryOutput(const BinaryOutput&) = delete;
-        
+
         BinaryOutput(io::OStream& os) :
             refStream(os) {}
 
@@ -739,7 +739,7 @@ namespace io {
         stream() const noexcept {
             return this->refStream;
         }
-    
+
     private:
         io::IOStream&
             refStream;
