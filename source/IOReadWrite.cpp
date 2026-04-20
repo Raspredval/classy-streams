@@ -1,4 +1,5 @@
 #include "IOReadWrite.hpp"
+#include <cmath>
 
 namespace io {
     namespace __impl {
@@ -7,7 +8,7 @@ namespace io {
             buffer() :
                 data(nullptr),
                 size(0) {}
-            
+
             ~buffer() {
                 if (this->data)
                     free(this->data);
@@ -22,7 +23,7 @@ namespace io {
 
                 return { this->data, this->size };
             }
-            
+
         private:
             char*   data;
             size_t  size;
@@ -50,10 +51,10 @@ namespace io {
                     stream.PutBack(*optc);
                     break;
                 }
-        
+
                 strWord.push_back((char)*optc);
             }
-        
+
             return strWord;
         }
 
@@ -67,7 +68,7 @@ namespace io {
                 if ((char)*optc == '\n') {
                     break;
                 }
-                
+
                 strLine += (char)*optc;
             }
 
@@ -203,7 +204,7 @@ namespace io {
                 optc        = std::nullopt;
             std::span<char>
                 spnBuffer   = g_buffer.get_span(32);
-            
+
         ParseSpacing:
             if ((bool)(optc = stream.Read())) {
                 if (!isspace((int)*optc)) {
@@ -219,7 +220,7 @@ namespace io {
         ParseFirstChar:
             if ((bool)(optc = stream.Read())) {
                 char c = (char)*optc;
-                
+
                 if (c == '-' || c == '+' || isdigit(c)) {
                     spnBuffer[uSize] = c;
                     uSize += 1;
@@ -234,7 +235,7 @@ namespace io {
                 return 0;
 
         ParseDigits:
-            if (uSize == spnBuffer.size())
+            if ((uSize + 1) == spnBuffer.size())
                 goto GenerateValue;
             if ((bool)(optc = stream.Read())) {
                 char c = (char)*optc;
@@ -252,13 +253,8 @@ namespace io {
                 goto GenerateValue;
 
         GenerateValue:
-            intptr_t
-                iResult;
-            std::from_chars(
-                spnBuffer.data(),
-                spnBuffer.data() + uSize,
-                iResult, base);
-            return iResult;
+            spnBuffer[uSize] = '\0';
+            return std::strtol(spnBuffer.data(), nullptr, base);
         }
 
         double
@@ -280,12 +276,12 @@ namespace io {
                     goto ParseSpacing;
             }
             else
-                return 0;
+                return NAN;
 
         ParseFirstChar:
             if ((bool)(optc = stream.Read())) {
                 char c = (char)*optc;
-                
+
                 if (c == '-' || c == '+' || isdigit(c)) {
                     spnBuffer[uSize] = c;
                     uSize += 1;
@@ -298,14 +294,14 @@ namespace io {
                 }
                 else {
                     stream.PutBack(*optc);
-                    return 0;
+                    return NAN;
                 }
             }
             else
-                return 0;
+                return NAN;
 
         ParseNaturalPart:
-            if (uSize == spnBuffer.size())
+            if ((uSize + 1) == spnBuffer.size())
                 goto GenerateValue;
             if ((bool)(optc = stream.Read())) {
                 char c = (char)*optc;
@@ -328,7 +324,7 @@ namespace io {
                 goto GenerateValue;
 
         ParseFractionalPart:
-            if (uSize == spnBuffer.size())
+            if ((uSize + 1) == spnBuffer.size())
                 goto GenerateValue;
             if ((bool)(optc = stream.Read())) {
                 char c = (char)*optc;
@@ -346,13 +342,8 @@ namespace io {
                 goto GenerateValue;
 
         GenerateValue:
-            double
-                fResult;
-            std::from_chars(
-                spnBuffer.data(),
-                spnBuffer.data() + uSize,
-                fResult, std::chars_format::fixed);
-            return fResult;
+            spnBuffer[uSize] = '\0';
+            return strtod(spnBuffer.data(), nullptr);
         }
     }
 }
