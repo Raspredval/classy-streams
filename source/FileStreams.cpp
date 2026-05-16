@@ -148,7 +148,7 @@ namespace io {
 
     IFileStreamView::IFileStreamView(FILE* handle) :
         FileStreamViewBase(handle) {}
-    
+
     std::optional<std::byte>
     IFileStreamView::Read() {
         return this->FileStreamViewBase::Read();
@@ -205,9 +205,9 @@ namespace io {
         return this->FileStreamViewBase::WriteSome(buffer);
     }
 
-    IFileStream::IFileStream(std::string_view strvFilename, bool bIsBinaryFile) :
-        FileStreamBase(strvFilename, bIsBinaryFile ? "rb" : "r") {}
-    
+    IFileStream::IFileStream(std::string_view strvFilename) :
+        FileStreamBase(strvFilename, "rb") {}
+
     std::optional<std::byte>
     IFileStream::Read() {
         return this->FileStreamBase::Read();
@@ -223,8 +223,8 @@ namespace io {
         return this->FileStreamBase::PutBack(c);
     }
 
-    OFileStream::OFileStream(std::string_view strvFilename, bool bIsBinaryFile) :
-        FileStreamBase(strvFilename, bIsBinaryFile ? "wb" : "w") {}
+    OFileStream::OFileStream(std::string_view strvFilename) :
+        FileStreamBase(strvFilename, "wb") {}
 
     bool
     OFileStream::Write(std::byte c) {
@@ -236,8 +236,8 @@ namespace io {
         return this->FileStreamBase::WriteSome(buffer);
     }
 
-    IOFileStream::IOFileStream(std::string_view strvFilename, bool bIsBinaryFile) :
-        FileStreamBase(strvFilename, bIsBinaryFile ? "rb+" : "r+") {}
+    IOFileStream::IOFileStream(std::string_view strvFilename) :
+        FileStreamBase(strvFilename, "rb+") {}
 
     bool
     IOFileStream::Write(std::byte c) {
@@ -266,7 +266,7 @@ namespace io {
 
     SerialIFileStreamView::SerialIFileStreamView(FILE* handle) :
         SerialFileStreamViewBase(handle) {}
-    
+
     std::optional<std::byte>
     SerialIFileStreamView::Read() {
         return this->SerialFileStreamViewBase::Read();
@@ -323,9 +323,9 @@ namespace io {
         return this->SerialFileStreamViewBase::WriteSome(buffer);
     }
 
-    SerialIFileStream::SerialIFileStream(std::string_view strvFilename, bool bIsBinaryFile) :
-        SerialFileStreamBase(strvFilename, bIsBinaryFile ? "rb" : "r") {}
-    
+    SerialIFileStream::SerialIFileStream(std::string_view strvFilename) :
+        SerialFileStreamBase(strvFilename, "rb") {}
+
     std::optional<std::byte>
     SerialIFileStream::Read() {
         return this->SerialFileStreamBase::Read();
@@ -341,8 +341,8 @@ namespace io {
         return this->SerialFileStreamBase::PutBack(c);
     }
 
-    SerialOFileStream::SerialOFileStream(std::string_view strvFilename, bool bIsBinaryFile) :
-        SerialFileStreamBase(strvFilename, bIsBinaryFile ? "wb" : "w") {}
+    SerialOFileStream::SerialOFileStream(std::string_view strvFilename) :
+        SerialFileStreamBase(strvFilename, "wb") {}
 
     bool
     SerialOFileStream::Write(std::byte c) {
@@ -354,8 +354,8 @@ namespace io {
         return this->SerialFileStreamBase::WriteSome(buffer);
     }
 
-    SerialIOFileStream::SerialIOFileStream(std::string_view strvFilename, bool bIsBinaryFile) :
-        SerialFileStreamBase(strvFilename, bIsBinaryFile ? "rb+" : "r+") {}
+    SerialIOFileStream::SerialIOFileStream(std::string_view strvFilename) :
+        SerialFileStreamBase(strvFilename, "rb+") {}
 
     bool
     SerialIOFileStream::Write(std::byte c) {

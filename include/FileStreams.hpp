@@ -101,7 +101,7 @@ namespace io {
         public  __impl::FileStreamViewBase {
     public:
         IFileStreamView(FILE* handle);
-        
+
         std::optional<std::byte>
         Read() override;
 
@@ -117,7 +117,7 @@ namespace io {
         public  __impl::FileStreamViewBase {
     public:
         OFileStreamView(FILE* handle);
-        
+
         bool
         Write(std::byte c) override;
 
@@ -151,7 +151,7 @@ namespace io {
         public  IStream,
         public  __impl::FileStreamBase {
     public:
-        IFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
+        IFileStream(std::string_view strvFilename);
 
         std::optional<std::byte>
         Read() override;
@@ -167,7 +167,7 @@ namespace io {
         public  OStream,
         public  __impl::FileStreamBase {
     public:
-        OFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
+        OFileStream(std::string_view strvFilename);
 
         bool
         Write(std::byte c) override;
@@ -180,7 +180,7 @@ namespace io {
         public  IOStream,
         public  __impl::FileStreamBase {
     public:
-        IOFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
+        IOFileStream(std::string_view strvFilename);
 
         bool
         Write(std::byte c) override;
@@ -203,7 +203,7 @@ namespace io {
         public  __impl::SerialFileStreamViewBase {
     public:
         SerialIFileStreamView(FILE* handle);
-        
+
         std::optional<std::byte>
         Read() override;
 
@@ -219,7 +219,7 @@ namespace io {
         public  __impl::SerialFileStreamViewBase {
     public:
         SerialOFileStreamView(FILE* handle);
-        
+
         bool
         Write(std::byte c) override;
 
@@ -253,7 +253,7 @@ namespace io {
         public  SerialIStream,
         public  __impl::SerialFileStreamBase {
     public:
-        SerialIFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
+        SerialIFileStream(std::string_view strvFilename);
 
         std::optional<std::byte>
         Read() override;
@@ -269,7 +269,7 @@ namespace io {
         public  SerialOStream,
         public  __impl::SerialFileStreamBase {
     public:
-        SerialOFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
+        SerialOFileStream(std::string_view strvFilename);
 
         bool
         Write(std::byte c) override;
@@ -282,7 +282,7 @@ namespace io {
         public  SerialIOStream,
         public  __impl::SerialFileStreamBase {
     public:
-        SerialIOFileStream(std::string_view strvFilename, bool bIsBinaryFile = false);
+        SerialIOFileStream(std::string_view strvFilename);
 
         bool
         Write(std::byte c) override;
