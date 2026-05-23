@@ -27,7 +27,8 @@ namespace io {
     void
     IOBufferStream::ClearBuffer() noexcept {
         this->deqBuffer.clear();
-        this->iCurPos   = 0;
+        this->iCurPos       = 0;
+        this->retbuf_size   = 0;
         this->ClearFlags();
     }
 
