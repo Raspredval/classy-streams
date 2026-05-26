@@ -155,7 +155,7 @@ namespace io {
         }
 
         void
-        TextInputBase::exportword_impl(io::SerialIStream& from, io::SerialIOStream& to) {
+        TextInputBase::exportword_impl(io::SerialIStream& from, io::SerialOStream& to) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = from.Read())) {
@@ -175,7 +175,7 @@ namespace io {
         }
 
         void
-        TextInputBase::exportline_impl(io::SerialIStream& from, io::SerialIOStream& to) {
+        TextInputBase::exportline_impl(io::SerialIStream& from, io::SerialOStream& to) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = from.Read())) {
@@ -188,7 +188,7 @@ namespace io {
         }
 
         void
-        TextInputBase::exportall_impl(io::SerialIStream& from, io::SerialIOStream& to) {
+        TextInputBase::exportall_impl(io::SerialIStream& from, io::SerialOStream& to) {
             std::optional<std::byte>
                 optc;
             while ((bool)(optc = from.Read())) {

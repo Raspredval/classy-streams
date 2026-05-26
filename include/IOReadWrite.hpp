@@ -350,13 +350,13 @@ namespace io {
             getfloat_impl(io::SerialIStream& stream);
 
             static void
-            exportword_impl(io::SerialIStream& from, io::SerialIOStream& to);
+            exportword_impl(io::SerialIStream& from, io::SerialOStream& to);
 
             static void
-            exportline_impl(io::SerialIStream& from, io::SerialIOStream& to);
+            exportline_impl(io::SerialIStream& from, io::SerialOStream& to);
 
             static void
-            exportall_impl(io::SerialIStream& from, io::SerialIOStream& to);
+            exportall_impl(io::SerialIStream& from, io::SerialOStream& to);
         };
 
         class BinaryOutputBase {
