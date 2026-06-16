@@ -273,7 +273,7 @@ namespace io {
 
         ParseSpacing:
             if ((bool)(optc = stream.Read())) {
-                if (!std::isblank((int)*optc)) {
+                if (!std::isspace((int)*optc)) {
                     stream.PutBack(*optc);
                     goto ParseSign;
                 }
@@ -334,7 +334,7 @@ namespace io {
 
         ParseSpacing:
             if ((bool)(optc = stream.Read())) {
-                if (!std::isblank((int)*optc)) {
+                if (!std::isspace((int)*optc)) {
                     stream.PutBack(*optc);
                     goto ParseSign;
                 }
