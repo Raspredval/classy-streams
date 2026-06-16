@@ -223,54 +223,40 @@ namespace io {
             const auto&
             getd(this const auto& self, std::integral auto& out) {
                 out = self.getint_impl(
-                    self.stream(), 10,
-                    [](char c) -> bool {
-                        return c >= '0' && c <= '9';
-                    });
+                    self.stream(), 10);
                 return self;
             }
 
             const auto&
             getx(this const auto& self, std::integral auto& out) {
                 out = self.getint_impl(
-                    self.stream(), 16,
-                    [](char c) -> bool {
-                        return
-                            (c >= '0' && c <= '9') ||
-                            (c >= 'a' && c <= 'f') ||
-                            (c >= 'A' && c <= 'F');
-                    });
+                    self.stream(), 16);
                 return self;
             }
 
             const auto&
             geto(this const auto& self, std::integral auto& out) {
                 out = self.getint_impl(
-                    self.stream(), 8,
-                    [](char c) -> bool {
-                        return c >= '0' && c <= '7';
-                    });
+                    self.stream(), 8);
                 return self;
             }
 
             const auto&
             getb(this const auto& self, std::integral auto& out) {
                 out = self.getint_impl(
-                    self.stream(), 2,
-                    [](char c) -> bool {
-                        return c >= '0' && c <= '1';
-                    });
+                    self.stream(), 2);
                 return self;
             }
 
             const auto&
             geti(this const auto& self, std::integral auto& out) {
-                return self.get_dec(out);
+                return self.getd(out);
             }
 
             const auto&
             getf(this const auto& self, std::floating_point auto& out) {
-                out = TextInputBase::getfloat_impl(self.stream());
+                out = self.getfloat_impl(
+                    self.stream());
                 return self;
             }
 
@@ -344,7 +330,7 @@ namespace io {
             getall_impl(io::SerialIStream& stream);
 
             static intptr_t
-            getint_impl(io::SerialIStream& stream, int base, bool(*fnIsDigit)(char));
+            getint_impl(io::SerialIStream& stream, int base);
 
             static double
             getfloat_impl(io::SerialIStream& stream);
@@ -831,7 +817,7 @@ namespace io {
         const auto&
         TextInputBase::exportf(this const auto& self, io::SerialOStream& to) {
             double fValue;
-            self.get_float(fValue);
+            self.getf(fValue);
             io::SerialTextOutput(to).putf(fValue);
             return self;
         }
@@ -856,7 +842,7 @@ namespace io {
         const auto&
         BinaryInputBase::exporti(this const auto& self, io::SerialOStream& to) {
             V iValue;
-            self.get_int(iValue);
+            self.geti(iValue);
             SerialBinaryOutput(to).puti(iValue);
             return self;
         }
@@ -865,7 +851,7 @@ namespace io {
         const auto&
         BinaryInputBase::exportf(this const auto& self, io::SerialOStream& to) {
             V fValue;
-            self.get_float(fValue);
+            self.getf(fValue);
             SerialBinaryOutput(to).putf(fValue);
             return self;
         }

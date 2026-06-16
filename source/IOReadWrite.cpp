@@ -196,20 +196,86 @@ namespace io {
             }
         }
 
+        static int
+        dec2int(char c) {
+            switch (c) {
+            case '0'...'9':
+                return c - '0';
+
+            default:
+                return -1;
+            }
+        }
+
+        static int
+        oct2int(char c) {
+            switch (c) {
+            case '0'...'7':
+                return c - '0';
+
+            default:
+                return -1;
+            }
+        }
+
+        static int
+        hex2int(char c) {
+            switch (c) {
+            case '0'...'7':
+                return c - '0';
+
+            case 'A'...'F':
+                return c - 'A';
+
+            case 'a'...'f':
+                return c - 'f';
+
+            default:
+                return -1;
+            }
+        }
+
+        static int
+        bin2int(char c) {
+            switch (c) {
+            case '0'...'1':
+                return c - '0';
+
+            default:
+                return -1;
+            }
+        }
+
         intptr_t
-        TextInputBase::getint_impl(io::SerialIStream& stream, int base, bool(*fnIsDigit)(char)) {
-            size_t
-                uSize       = 0;
+        TextInputBase::getint_impl(io::SerialIStream& stream, int base) {
+            intptr_t
+                iValue  = 0,
+                iSign   = 1;
             std::optional<std::byte>
-                optc        = std::nullopt;
-            std::span<char>
-                spnBuffer   = g_buffer.get_span(32);
+                optc    = std::nullopt;
+
+            using
+                c2int_t = int(*)(char);
+            c2int_t
+                fnC2Int = nullptr;
+            switch (base) {
+            case 2:
+                fnC2Int  = bin2int; break;
+            case 8:
+                fnC2Int  = oct2int; break;
+            case 10:
+                fnC2Int  = dec2int; break;
+            case 16:
+                fnC2Int  = hex2int; break;
+            default:
+                return 0;
+            }
 
         ParseSpacing:
             if ((bool)(optc = stream.Read())) {
-                if (!isspace((int)*optc)) {
+                if (!std::isblank((int)*optc)) {
                     stream.PutBack(*optc);
-                    goto ParseFirstChar;
+                    goto ParseSign;
                 }
                 else
                     goto ParseSpacing;
@@ -217,60 +283,60 @@ namespace io {
             else
                 return 0;
 
-        ParseFirstChar:
+        ParseSign:
             if ((bool)(optc = stream.Read())) {
-                char c = (char)*optc;
-
-                if (c == '-' || c == '+' || isdigit(c)) {
-                    spnBuffer[uSize] = c;
-                    uSize += 1;
-                    goto ParseDigits;
-                }
-                else {
+                switch ((char)*optc) {
+                case '-':
+                    iSign   = -1; break;
+                case '+':
+                    iSign   = +1; break;
+                default:
                     stream.PutBack(*optc);
-                    return 0;
-                }
+                } goto ParseFirstDigit;
             }
             else
                 return 0;
 
-        ParseDigits:
-            if ((uSize + 1) == spnBuffer.size())
-                goto GenerateValue;
+        ParseFirstDigit:
             if ((bool)(optc = stream.Read())) {
-                char c = (char)*optc;
-                if (fnIsDigit(c)) {
-                    spnBuffer[uSize] = c;
-                    uSize += 1;
-                    goto ParseDigits;
+                int
+                    iDigit  = fnC2Int((char)*optc);
+                if (iDigit >= 0) {
+                    iValue  = iDigit;
+                    goto ParseDigit;
                 }
-                else {
+                else
                     stream.PutBack(*optc);
-                    goto GenerateValue;
-                }
-            }
-            else
-                goto GenerateValue;
+            } return 0;
 
-        GenerateValue:
-            spnBuffer[uSize] = '\0';
-            return std::strtol(spnBuffer.data(), nullptr, base);
+        ParseDigit:
+            if ((bool)(optc = stream.Read())) {
+                int
+                    iDigit  = fnC2Int((char)*optc);
+                if (iDigit >= 0) {
+                    iValue  = iValue * base + iDigit;
+                    goto ParseDigit;
+                }
+                else
+                    stream.PutBack(*optc);
+            } return iValue * iSign;
         }
 
         double
         TextInputBase::getfloat_impl(io::SerialIStream& stream) {
-            size_t
-                uSize       = 0;
+            double
+                fValue  = 0.,
+                fSgnFrc = 1.,
+                fExp    = 0.,
+                fExpSgn = 1.;
             std::optional<std::byte>
-                optc        = std::nullopt;
-            std::span<char>
-                spnBuffer   = g_buffer.get_span(32);
+                optc    = std::nullopt;
 
         ParseSpacing:
             if ((bool)(optc = stream.Read())) {
-                if (!isspace((int)*optc)) {
+                if (!std::isblank((int)*optc)) {
                     stream.PutBack(*optc);
-                    goto ParseFirstChar;
+                    goto ParseSign;
                 }
                 else
                     goto ParseSpacing;
@@ -278,72 +344,122 @@ namespace io {
             else
                 return NAN;
 
-        ParseFirstChar:
+        ParseSign:
             if ((bool)(optc = stream.Read())) {
-                char c = (char)*optc;
-
-                if (c == '-' || c == '+' || isdigit(c)) {
-                    spnBuffer[uSize] = c;
-                    uSize += 1;
-                    goto ParseNaturalPart;
-                }
-                else if (c == '.' || c == ',') {
-                    spnBuffer[uSize] = '.';
-                    uSize += 1;
-                    goto ParseFractionalPart;
-                }
-                else {
+                switch ((char)*optc) {
+                case '-':
+                    fSgnFrc = -1.; break;
+                case '+':
+                    fSgnFrc = +1.; break;
+                default:
                     stream.PutBack(*optc);
-                    return NAN;
                 }
+
+                goto ParseFirstNatural;
             }
             else
                 return NAN;
 
-        ParseNaturalPart:
-            if ((uSize + 1) == spnBuffer.size())
-                goto GenerateValue;
+        ParseFirstNatural:
             if ((bool)(optc = stream.Read())) {
-                char c = (char)*optc;
-                if (isdigit(c)) {
-                    spnBuffer[uSize] = c;
-                    uSize += 1;
-                    goto ParseNaturalPart;
+                int
+                    iDigit  = dec2int((char)*optc);
+                if (iDigit >= 0) {
+                    fValue  = iDigit;
+                    goto ParseNatural;
                 }
-                else if (c == '.' || c == ',') {
-                    spnBuffer[uSize] = '.';
-                    uSize += 1;
-                    goto ParseFractionalPart;
+                else
+                    stream.PutBack(*optc);
+            } return NAN;
+
+        ParseNatural:
+            if ((bool)(optc = stream.Read())) {
+                int
+                    iDigit  = dec2int((char)*optc);
+                if (iDigit < 0) {
+                    stream.PutBack(*optc);
+                    goto ParseDot;
                 }
                 else {
-                    stream.PutBack(*optc);
-                    goto GenerateValue;
+                    fValue  = fValue * 10. + iDigit;
+                    goto ParseNatural;
                 }
             }
             else
-                goto GenerateValue;
+                return fValue * fSgnFrc;
 
-        ParseFractionalPart:
-            if ((uSize + 1) == spnBuffer.size())
-                goto GenerateValue;
+        ParseDot:
             if ((bool)(optc = stream.Read())) {
-                char c = (char)*optc;
-                if (isdigit(c)) {
-                    spnBuffer[uSize] = c;
-                    uSize += 1;
-                    goto ParseFractionalPart;
+                if ((char)*optc == '.')
+                    goto ParseFract;
+                else
+                    stream.PutBack(*optc);
+            } return fValue * fSgnFrc;
+
+        ParseFract:
+            if ((bool)(optc = stream.Read())) {
+                int
+                    iDigit  = dec2int((char)*optc);
+                if (iDigit < 0) {
+                    stream.PutBack(*optc);
+                    goto ParseE;
                 }
                 else {
-                    stream.PutBack(*optc);
-                    goto GenerateValue;
+                    fValue  = fValue * 10. + iDigit;
+                    fSgnFrc *= 0.1;
+                    goto ParseFract;
                 }
             }
             else
-                goto GenerateValue;
+                return fValue * fSgnFrc;
 
-        GenerateValue:
-            spnBuffer[uSize] = '\0';
-            return strtod(spnBuffer.data(), nullptr);
+        ParseE:
+            if ((bool)(optc = stream.Read())) {
+                switch ((char)*optc) {
+                case 'E':
+                case 'e':
+                    goto ParseExpSign;
+                default:
+                    stream.PutBack(*optc);
+                }
+            } return fValue * fSgnFrc;
+
+        ParseExpSign:
+            if ((bool)(optc = stream.Read())) {
+                switch ((char)*optc) {
+                case '-':
+                    fExpSgn = -1.f; break;
+                case '+':
+                    fExpSgn = +1.f; break;
+                default:
+                    stream.PutBack(*optc);
+                    return NAN;
+                } goto ParseFirstExp;
+            }
+
+        ParseFirstExp:
+            if ((bool)(optc = stream.Read())) {
+                int
+                    iDigit  = dec2int((char)*optc);
+                if (iDigit >= 0) {
+                    fExp    = iDigit;
+                    goto ParseExp;
+                }
+                else
+                    stream.PutBack(*optc);
+            } return NAN;
+
+        ParseExp:
+            if ((bool)(optc = stream.Read())) {
+                int
+                    iDigit  = dec2int((char)*optc);
+                if (iDigit >= 0) {
+                    fExp    = fExp * 10. + iDigit;
+                    goto ParseExp;
+                }
+                else
+                    stream.PutBack(*optc);
+            } return fValue * fSgnFrc * std::pow(10, fExp * fExpSgn);
         }
     }
 }
