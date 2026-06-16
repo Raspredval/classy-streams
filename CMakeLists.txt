@@ -124,3 +124,14 @@ target_include_directories(test_binary_io
         "include/")
 target_link_libraries(test_binary_io
     classy-streams-shared)
+
+add_executable(test_text_io
+    "tests/test_text_io.cpp")
+target_compile_options(test_text_io
+    PRIVATE
+        ${CXX_WARNINGS})
+target_include_directories(test_text_io
+    PRIVATE
+        "include/")
+target_link_libraries(test_text_io
+    classy-streams-shared)
